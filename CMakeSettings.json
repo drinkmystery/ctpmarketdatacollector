@@ -1,0 +1,47 @@
+{
+    // See https://go.microsoft.com//fwlink//?linkid=834763 for more information about this file.
+    "configurations": [
+        {
+            "name": "x64-Debug",
+            "generator": "Visual Studio 15 2017 Win64",
+            "configurationType": "Debug",
+            "inheritEnvironments": [ "msvc_x64" ],
+            "buildRoot": "${projectDir}\\build",
+            "installRoot": "${projectDir}\\bin",
+            "cmakeCommandArgs": "",
+            "buildCommandArgs": "",
+            "ctestCommandArgs": "",
+            "variables": [
+                {
+                    "name": "CMAKE_PREFIX_PATH",
+                    "value": "C:\\Users\\drink\\cpplib"
+                },
+                {
+                    "name": "BOOST_ROOT",
+                    "value": "C:\\Users\\drink\\cpplib\\boost_1_65_1"
+                }
+            ]
+        },
+        {
+            "name": "x64-Release",
+            "generator": "Visual Studio 15 2017 Win64",
+            "configurationType": "Release",
+            "inheritEnvironments": [ "msvc_x64" ],
+            "buildRoot": "${projectDir}\\build",
+            "installRoot": "${projectDir}\\bin",
+            "cmakeCommandArgs": "",
+            "buildCommandArgs": "",
+            "ctestCommandArgs": "",
+            "variables": [
+                {
+                    "name": "CMAKE_PREFIX_PATH",
+                    "value": "C:\\Users\\drink\\cpplib"
+                },
+                {
+                    "name": "BOOST_ROOT",
+                    "value": "C:\\Users\\drink\\cpplib\\boost_1_65_1"
+                }
+            ]
+        }
+    ]
+}

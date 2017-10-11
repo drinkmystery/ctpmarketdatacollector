@@ -12,20 +12,15 @@ volatile std::sig_atomic_t gIsRunning;
 }
 
 extern "C" void signal_handler(int signal) {
+    ILOG("Detect signal:{}", signal);
     gSignalStatus = signal;
     gIsRunning    = 0;
-    ILOG("Detect signal:{}", signal);
 }
 
 int32 main(int32 argc, char** argv) {
     gIsRunning = 1;
     std::signal(SIGTERM, signal_handler);
-    std::signal(SIGSEGV, signal_handler);
     std::signal(SIGINT, signal_handler);
-    std::signal(SIGILL, signal_handler);
-    std::signal(SIGABRT, signal_handler);
-    std::signal(SIGFPE, signal_handler);
-    std::signal(SIGBREAK, signal_handler);
 
     logger::initLogger();
     int32 result = 0;
@@ -63,6 +58,7 @@ int32 main(int32 argc, char** argv) {
     while (gIsRunning) {
         std::this_thread::yield();
     }
+    ILOG("Collector try stop");
     result = collector.stop();
     ILOG("Collector is not running, exited! Result:{}", result);
 

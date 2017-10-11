@@ -17,15 +17,17 @@ int32 CtpMarketData::init(const CtpConfig& ctp_config) {
             return -1;
         }
         ctpmdapi_ = {mdapi, [](CThostFtdcMdApi* mdapi) {
-            // The Ctp's Document does not say how to release the api gracefully, maybe release then join, NEED TEST!
+            // The Ctp's Document does not say how to release the api gracefully, maybe Release then Join, NEED TEST! 2017/10/10 drinkmystery
             if (mdapi != nullptr) {
                 mdapi->Release();
             }
-            if (mdapi != nullptr) {
-                mdapi->Join();
-            }
+            // The actul result is cannot call Join after Release! 2017/10/11 drinkmystery
+            //if (mdapi != nullptr) {
+            //    mdapi->Join();
+            //}
         }};
         ctpmdapi_->RegisterSpi(&ctpmdspi_);
+        ILOG("Ctp create api instance success!");
     }
     // 2. Connect to Ctp Front.
     {

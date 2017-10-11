@@ -1,5 +1,9 @@
 ﻿#include "datastore/mongostore.h"
 
+#include <bsoncxx/builder/basic/document.hpp>
+#include <bsoncxx/builder/basic/kvp.hpp>
+#include <bsoncxx/types.hpp>
+
 #include "utils/logger.h"
 
 mongocxx::instance MongoStore::instance_ = {};
@@ -64,15 +68,14 @@ void MongoStore::process() {
     for (size_t index = 0, read = buffer_.pop(&(datas[0]), count); index < read; ++index) {
         try {
             // TODO add more filed
+            using bsoncxx::builder::basic::kvp;
+            bsoncxx::builder::basic::document builder{};
+            builder.append(kvp("id", datas[index].instrument_id));
+            builder.append(kvp("date", bsoncxx::types::b_date(datas[index].last_update_time)));
+            builder.append(kvp("value", datas[index].value));
+
             auto collection = db_.collection(datas[index].instrument_id);
-            // clang-format off
-            auto doc_value = bsoncxx::builder::stream::document{}
-                << "id" << datas[index].instrument_id
-                << "date" << datas[index].date
-                << "value" << datas[index].value
-                << bsoncxx::builder::stream::finalize;
-            // clang-format on
-            collection.insert_one(doc_value.view());
+            collection.insert_one(builder.view());
         } catch (const std::exception& e) {
             ELOG("MongoDb insert failed! {}", e.what());
         }

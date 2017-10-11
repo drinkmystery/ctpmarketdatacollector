@@ -180,6 +180,7 @@ int32 CtpMarketDataCollector::start() {
 
 int32 CtpMarketDataCollector::stop() {
     ctp_md_data_.stop();
+    DLOG("MarketData stop ok.");
     is_running_.store(false, std::memory_order_release);
     if (inter_thread_.joinable()) {
         inter_thread_.join();
@@ -187,7 +188,9 @@ int32 CtpMarketDataCollector::stop() {
     while (!ctp_md_data_.empty()) {
         process();
     }
+    DLOG("Collector stop ok.");
     mongo_store_.stop();
+    DLOG("Mongo store stop ok.");
     return 0;
 }
 
@@ -206,6 +209,7 @@ void CtpMarketDataCollector::loop() {
 void CtpMarketDataCollector::process() {
     // TODO add value and ticktime
     while (!ctp_md_data_.empty()) {
+        DLOG("Collector process one origin data");
         CThostFtdcDepthMarketDataField origin;
         if (ctp_md_data_.getData(origin)) {
             MarketData data = {origin.InstrumentID,
@@ -220,6 +224,7 @@ void CtpMarketDataCollector::process() {
             } else {
                 data_records_.insert({data.instrument_id, data});
             }
+            DLOG("Collector process one origin data ok");
         }
     }
 
@@ -247,6 +252,7 @@ void CtpMarketDataCollector::process() {
         if (need_update) {
             it.second.last_update_time = now_minutes;
             mongo_store_.getBuffer().push(it.second);
+            DLOG("Collector try update one data");
         }
     }
 }

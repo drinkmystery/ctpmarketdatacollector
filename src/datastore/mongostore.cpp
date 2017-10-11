@@ -76,6 +76,7 @@ void MongoStore::process() {
 
             auto collection = db_.collection(datas[index].instrument_id);
             collection.insert_one(builder.view());
+            DLOG("MongoDb update one data ok!");
         } catch (const std::exception& e) {
             ELOG("MongoDb insert failed! {}", e.what());
         }

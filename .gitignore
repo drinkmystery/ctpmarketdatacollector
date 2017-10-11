@@ -29,3 +29,6 @@ Debug
 
 # CMake build
 build
+
+# Mkdocs
+site

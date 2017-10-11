@@ -13,7 +13,7 @@ volatile std::sig_atomic_t gIsRunning;
 
 extern "C" void signal_handler(int signal) {
     gSignalStatus = signal;
-    gIsRunning = 0;
+    gIsRunning    = 0;
     ILOG("Detect signal:{}", signal);
 }
 

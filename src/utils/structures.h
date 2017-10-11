@@ -16,13 +16,11 @@ struct CtpConfig {
 
 struct MongoConfig {
     string address;
-    string user;
-    string password;
     string db;
-    string collection;
 };
 
 struct MarketData {
+    // TODO
     string instrument_id;
     string date;
     string value;

@@ -57,8 +57,6 @@ int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
         ("ctp.flowPath", po::value<string>()->required())
         ("ctp.instrumentIDs", po::value<string>()->required())
         ("mongo.address", po::value<string>()->required())
-        ("mongo.user", po::value<string>()->required())
-        ("mongo.password", po::value<string>()->required());
         ("mongo.db", po::value<string>()->required());
     // clang-format on
 
@@ -80,16 +78,22 @@ int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
         return -6;
     }
 
-    ctp_config_.broker_id      = app_options["ctp.brokerID"].as<string>();
-    ctp_config_.user_id        = app_options["ctp.usedID"].as<string>();
-    ctp_config_.password       = app_options["ctp.password"].as<string>();
-    ctp_config_.md_address     = app_options["ctp.mdAddress"].as<string>();
-    ctp_config_.flow_path      = app_options["ctp.flowPath"].as<string>();
-    ctp_config_.instrument_ids = app_options["ctp.instrumentIDs"].as<string>();
-    mongo_config_.address      = app_options["mongo.address"].as<string>();
-    mongo_config_.user         = app_options["mongo.user"].as<string>();
-    mongo_config_.password     = app_options["mongo.password"].as<string>();
-    mongo_config_.db           = app_options["mongo.db"].as<string>();
+    try {
+        ctp_config_.broker_id      = app_options["ctp.brokerID"].as<string>();
+        ctp_config_.user_id        = app_options["ctp.userID"].as<string>();
+        ctp_config_.password       = app_options["ctp.password"].as<string>();
+        ctp_config_.md_address     = app_options["ctp.mdAddress"].as<string>();
+        ctp_config_.flow_path      = app_options["ctp.flowPath"].as<string>();
+        ctp_config_.instrument_ids = app_options["ctp.instrumentIDs"].as<string>();
+        mongo_config_.address      = app_options["mongo.address"].as<string>();
+        mongo_config_.db           = app_options["mongo.db"].as<string>();
+    } catch (std::exception& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        return -7;
+    } catch (...) {
+        std::cerr << "Unknown error!\n";
+        return -8;
+    }
 
     is_configed = true;
     return 0;
@@ -103,18 +107,26 @@ int32 CtpMarketDataCollector::createPath() {
 
     namespace fs = boost::filesystem;
 
-    auto flow_path = fs::path(ctp_config_.flow_path);
-    if (!fs::exists(flow_path)) {
-        if (fs::create_directory(flow_path)) {
-            return 0;
-        } else {
-            ELOG("Flow path create failed!");
-            return -1;
+    try {
+        auto flow_path = fs::path(ctp_config_.flow_path);
+        if (!fs::exists(flow_path)) {
+            if (fs::create_directory(flow_path)) {
+                return 0;
+            } else {
+                ELOG("Flow path create failed!");
+                return -1;
+            }
         }
-    }
-    if (!fs::is_directory(flow_path)) {
-        ELOG("Flow path is not a directory!");
-        return -2;
+        if (!fs::is_directory(flow_path)) {
+            ELOG("Flow path is not a directory!");
+            return -2;
+        }
+    } catch (std::exception& e) {
+        ELOG("Create path failed!{}", e.what());
+        return -3;
+    } catch (...) {
+        ELOG("Create path failed!");
+        return -4;
     }
 
     return 0;
@@ -128,16 +140,25 @@ int32 CtpMarketDataCollector::init() {
     is_inited = false;
 
     int32 init_result = 0;
-    init_result = mongo_store_.init(mongo_config_);
-    if (init_result != 0) {
-        ELOG("MongoDb init failed! Init result:{}", init_result);
-        return init_result;
-    }
 
-    init_result = ctp_md_data_.init(ctp_config_);
-    if (init_result != 0) {
-        ELOG("MarketData init failed! Init result:{}", init_result);
-        return init_result;
+    try {
+        init_result = mongo_store_.init(mongo_config_);
+        if (init_result != 0) {
+            ELOG("MongoDb init failed! Init result:{}", init_result);
+            return init_result;
+        }
+
+        init_result = ctp_md_data_.init(ctp_config_);
+        if (init_result != 0) {
+            ELOG("MarketData init failed! Init result:{}", init_result);
+            return init_result;
+        }
+    } catch (std::exception& e) {
+        ELOG("Init failed!{}", e.what());
+        return -2;
+    } catch (...) {
+        ELOG("Init failed!");
+        return -3;
     }
 
     is_inited = true;
@@ -177,6 +198,8 @@ bool CtpMarketDataCollector::isRunning() const {
 void CtpMarketDataCollector::loop() {
     while (is_running_.load(std::memory_order_relaxed)) {
         process();
+        // should yield?
+        std::this_thread::yield();
     }
 }
 

@@ -1,5 +1,7 @@
 ﻿#include "datastore/mongostore.h"
 
+#include "utils/logger.h"
+
 mongocxx::instance MongoStore::instance_ = {};
 
 MongoStore::~MongoStore() {
@@ -10,10 +12,16 @@ MongoStore::~MongoStore() {
 }
 
 int32 MongoStore::init(const MongoConfig& mongo_config) {
-    config_ = mongo_config;
-    uri_    = {mongo_config.address};
-    client_ = {uri_};
-    db_     = client_.database(mongo_config.db);
+    try {
+        config_ = mongo_config;
+        uri_ = {mongo_config.address};
+        client_ = {uri_};
+        db_ = client_.database(mongo_config.db);
+    } catch (const std::exception& e) {
+        ELOG("MongoDb init failed! {}", e.what());
+        return -1;
+    }
+
     return 0;
 }
 
@@ -54,15 +62,19 @@ void MongoStore::process() {
     std::vector<MarketData> datas;
     datas.reserve(count);
     for (size_t index = 0, read = buffer_.pop(&(datas[0]), count); index < read; ++index) {
-        // TODO add more filed
-        auto collection = db_.collection(datas[index].instrument_id);
-        // clang-format off
-        auto doc_value = bsoncxx::builder::stream::document{}
-            << "id" << datas[index].instrument_id
-            << "date" << datas[index].date
-            << "value" << datas[index].value
-            << bsoncxx::builder::stream::finalize;
-        // clang-format on
-        collection.insert_one(doc_value.view());
+        try {
+            // TODO add more filed
+            auto collection = db_.collection(datas[index].instrument_id);
+            // clang-format off
+            auto doc_value = bsoncxx::builder::stream::document{}
+                << "id" << datas[index].instrument_id
+                << "date" << datas[index].date
+                << "value" << datas[index].value
+                << bsoncxx::builder::stream::finalize;
+            // clang-format on
+            collection.insert_one(doc_value.view());
+        } catch (const std::exception& e) {
+            ELOG("MongoDb insert failed! {}", e.what());
+        }
     }
 }

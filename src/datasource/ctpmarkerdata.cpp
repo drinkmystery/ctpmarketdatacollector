@@ -136,12 +136,10 @@ bool CtpMarketData::getData(CThostFtdcDepthMarketDataField& data) {
         return false;
     }
     return buffer_.pop(data);
-    return false;
 }
 
 bool CtpMarketData::empty() {
     return buffer_.empty();
-    return false;
 }
 
 int32 CtpMarketData::stop() {

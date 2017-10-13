@@ -6,7 +6,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <date/date.h>
-#include <spdlog/fmt/ostr.h>
 
 #include "utils/logger.h"
 

@@ -63,19 +63,21 @@ void MongoStore::process() {
         std::this_thread::yield();
         return;
     }
-    std::vector<MarketData> datas;
-    datas.reserve(count);
-    for (size_t index = 0, read = buffer_.pop(&(datas[0]), count); index < read; ++index) {
+    DLOG("MongoDb {} data", count);
+    MarketData data;
+    while (buffer_.pop(data)) {
+        DLOG("MongoDb pop data");
         try {
+            DLOG("MongoDb data id:{},date:{},", data.instrument_id, data.date);
+
             // TODO add more filed
             using bsoncxx::builder::basic::kvp;
             bsoncxx::builder::basic::document builder{};
-            builder.append(kvp("id", datas[index].instrument_id));
-            builder.append(kvp("date", bsoncxx::types::b_date(datas[index].last_update_time)));
-            builder.append(kvp("value", datas[index].value));
+            builder.append(kvp("id", data.instrument_id));
+            builder.append(kvp("date", bsoncxx::types::b_date(data.last_update_time)));
+            builder.append(kvp("value", data.value));
 
-            auto collection = db_.collection(datas[index].instrument_id);
-            collection.insert_one(builder.view());
+            db_[data.instrument_id].insert_one(builder.view());
             DLOG("MongoDb update one data ok!");
         } catch (const std::exception& e) {
             ELOG("MongoDb insert failed! {}", e.what());

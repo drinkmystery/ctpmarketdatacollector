@@ -6,6 +6,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <date/date.h>
+#include <spdlog/fmt/ostr.h>
 
 #include "utils/logger.h"
 
@@ -220,9 +221,12 @@ void CtpMarketDataCollector::process() {
 
             auto it = data_records_.find(data.instrument_id);
             if (it != data_records_.end()) {
+                data.last_update_time = it->second.last_update_time;
                 it->second = data;
+                DLOG("Collector exist Instrument Id:{}", data.instrument_id);
             } else {
                 data_records_.insert({data.instrument_id, data});
+                DLOG("Collector new Instrument Id:{}", data.instrument_id);
             }
             DLOG("Collector process one origin data ok");
         }

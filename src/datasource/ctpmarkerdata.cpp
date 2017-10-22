@@ -100,6 +100,7 @@ int32 CtpMarketData::init(const CtpConfig& ctp_config) {
                 inst_ids_.erase(instrument->InstrumentID);
             }
         });
+        global::need_reconnect.store(false, std::memory_order_release);
         ctpmdspi_.setOnFrontDisConnected([](int32) {
             WLOG("Ctp disconnet, try reconnect!");
             global::need_reconnect.store(true, std::memory_order_release);

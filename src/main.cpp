@@ -64,7 +64,6 @@ int32 main(int32 argc, char** argv) {
             auto result = collector.reConnect();
             if (result == 0) {
                 ILOG("Collector reconnet success!");
-                global::need_reconnect.store(true, std::memory_order_release);
             }
         }
         std::this_thread::yield();

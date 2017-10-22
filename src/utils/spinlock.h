@@ -4,19 +4,23 @@
 #include <atomic>
 
 namespace utils {
+
 class spinlock {
 public:
     spinlock() = default;
     spinlock(const spinlock&) = delete;
     spinlock& operator=(const spinlock&) = delete;
+
     void lock() {
-        while (flag.test_and_set(std::memory_order_acquire))
+        while (flag_.test_and_set(std::memory_order_acquire))
             ;
     }
-    void unlock() { flag.clear(std::memory_order_release); }
+
+    void unlock() { flag_.clear(std::memory_order_release); }
 
 private:
-    std::atomic_flag flag = ATOMIC_FLAG_INIT;
+    std::atomic_flag flag_ = ATOMIC_FLAG_INIT;
 };
+
 }  // namespace utils
 #endif  // _SPINLOCK_H_

@@ -17,7 +17,7 @@ CtpMarketDataCollector::~CtpMarketDataCollector() {
 }
 
 int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
-    is_configed = false;
+    is_configed_ = false;
 
     namespace fs = boost::filesystem;
     namespace po = boost::program_options;
@@ -95,12 +95,12 @@ int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
         return -8;
     }
 
-    is_configed = true;
+    is_configed_ = true;
     return 0;
 }
 
 int32 CtpMarketDataCollector::createPath() {
-    if (!is_configed) {
+    if (!is_configed_) {
         ELOG("Collector is not configured!");
         return -1;
     }
@@ -133,11 +133,11 @@ int32 CtpMarketDataCollector::createPath() {
 }
 
 int32 CtpMarketDataCollector::init() {
-    if (!is_configed) {
+    if (!is_configed_) {
         ELOG("Collector is not configured!");
         return -1;
     }
-    is_inited = false;
+    is_inited_ = false;
 
     int32 init_result = 0;
 
@@ -161,12 +161,12 @@ int32 CtpMarketDataCollector::init() {
         return -3;
     }
 
-    is_inited = true;
+    is_inited_ = true;
     return init_result;
 }
 
 int32 CtpMarketDataCollector::start() {
-    if (is_inited == false) {
+    if (is_inited_ == false) {
         ELOG("Collector is not inited!");
         return -1;
     }
@@ -195,23 +195,19 @@ int32 CtpMarketDataCollector::stop() {
 }
 
 int32 CtpMarketDataCollector::reConnect() {
-    if (is_inited == false) {
-        ELOG("Collector is not inited!");
-        return -1;
-    }
     try {
         auto result = ctp_md_data_.reConnect(ctp_config_);
         if (result != 0) {
             ELOG("MarketData reconnect failed! Result:{}", result);
-            return -2;
+            return -1;
         }
         ILOG("MarketData reconnect success!");
     } catch (std::exception& e) {
         ELOG("MarketData reconnect failed! {}", e.what());
-        return -3;
+        return -2;
     } catch (...) {
         ELOG("MarketData reconnect failed!");
-        return -4;
+        return -3;
     }
     return 0;
 }

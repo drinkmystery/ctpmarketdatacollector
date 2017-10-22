@@ -28,8 +28,8 @@ private:
     using DataMap = std::unordered_map<string, MarketData>;
 
     std::atomic<bool> is_running_ = ATOMIC_FLAG_INIT;
-    bool              is_configed = false;
-    bool              is_inited   = false;
+    bool              is_configed_ = false;
+    bool              is_inited_   = false;
     MongoConfig       mongo_config_;
     CtpConfig         ctp_config_;
     DataMap           data_records_;

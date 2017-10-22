@@ -5,25 +5,28 @@
 #include "utils/common.h"
 #include "utils/logger.h"
 #include "utils/global.h"
+#include "utils/scopeguard.h"
 #include "collector/ctpmarketdatacollector.h"
 
 namespace {
-volatile std::sig_atomic_t gSignalStatus;
-volatile std::sig_atomic_t gIsRunning;
-}
+
+volatile std::sig_atomic_t is_running;
+
+}  // namespace
 
 extern "C" void signal_handler(int signal) {
     ILOG("Detect signal:{}", signal);
-    gSignalStatus = signal;
-    gIsRunning    = 0;
+    is_running = 0;
 }
 
 int32 main(int32 argc, char** argv) {
-    gIsRunning = 1;
+    is_running = 1;
     std::signal(SIGTERM, signal_handler);
     std::signal(SIGINT, signal_handler);
 
     logger::initLogger();
+    auto guard = utils::make_guard([] { logger::releaseLogger(); });
+
     int32 result = 0;
 
     CtpMarketDataCollector collector;
@@ -56,7 +59,7 @@ int32 main(int32 argc, char** argv) {
     }
     ILOG("Collector start success!");
 
-    while (gIsRunning) {
+    while (is_running) {
         if (global::need_reconnect.load(std::memory_order_relaxed)) {
             auto result = collector.reConnect();
             if (result == 0) {

@@ -92,15 +92,18 @@ int32 CtpMarketData::init(const CtpConfig& ctp_config) {
         ctpmdspi_.setOnDataFun([this](CThostFtdcDepthMarketDataField* data) { buffer_.push(*data); });
         ctpmdspi_.setOnSubFun([this](CThostFtdcSpecificInstrumentField* instrument, CThostFtdcRspInfoField* rsp) {
             if (instrument != nullptr && rsp != nullptr && rsp->ErrorID == 0) {
-                inst_ids.insert(instrument->InstrumentID);
+                inst_ids_.insert(instrument->InstrumentID);
             }
         });
         ctpmdspi_.setOnUnSubFun([this](CThostFtdcSpecificInstrumentField* instrument, CThostFtdcRspInfoField* rsp) {
             if (instrument != nullptr && rsp != nullptr && rsp->ErrorID == 0) {
-                inst_ids.erase(instrument->InstrumentID);
+                inst_ids_.erase(instrument->InstrumentID);
             }
         });
-        ctpmdspi_.setOnFrontDisConnected([](int32) { global::need_reconnect.store(true, std::memory_order_release); });
+        ctpmdspi_.setOnFrontDisConnected([](int32) {
+            WLOG("Ctp disconnet, try reconnect!");
+            global::need_reconnect.store(true, std::memory_order_release);
+        });
     }
 
     is_inited_ = true;
@@ -142,6 +145,7 @@ int32 CtpMarketData::stop() {
     if (ctpmdapi_) {
         ctpmdapi_.reset(nullptr);
     }
+    inst_ids_.clear();
     is_inited_ = false;
     return 0;
 }

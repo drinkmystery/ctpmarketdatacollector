@@ -27,7 +27,7 @@ private:
 
     int32            request_id_ = 0;
     bool             is_inited_  = false;
-    std::set<string> inst_ids;
+    std::set<string> inst_ids_;
     DataBuffer       buffer_{8192};
     CtpMdSpi         ctpmdspi_;
     CtpMdApiPtr      ctpmdapi_;

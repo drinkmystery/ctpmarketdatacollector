@@ -4,7 +4,9 @@
 #include <atomic>
 
 namespace global {
+
 extern std::atomic<bool> need_reconnect;
+
 }  // namespace global
 
 #endif  // _GLOBAL_H_

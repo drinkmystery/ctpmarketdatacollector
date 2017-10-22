@@ -19,6 +19,7 @@ public:
     bool getData(CThostFtdcDepthMarketDataField& data);
     bool empty();
     int32 stop();
+    int32 reConnect(const CtpConfig& ctp_config);
 
 private:
     using DataBuffer  = boost::lockfree::spsc_queue<CThostFtdcDepthMarketDataField>;

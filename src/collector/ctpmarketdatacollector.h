@@ -18,6 +18,7 @@ public:
     int32 init();
     int32 start();
     int32 stop();
+    int32 reConnect();
     bool isRunning() const;
 
 private:

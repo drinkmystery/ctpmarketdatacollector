@@ -194,6 +194,28 @@ int32 CtpMarketDataCollector::stop() {
     return 0;
 }
 
+int32 CtpMarketDataCollector::reConnect() {
+    if (is_inited == false) {
+        ELOG("Collector is not inited!");
+        return -1;
+    }
+    try {
+        auto result = ctp_md_data_.reConnect(ctp_config_);
+        if (result != 0) {
+            ELOG("MarketData reconnect failed! Result:{}", result);
+            return -2;
+        }
+        ILOG("MarketData reconnect success!");
+    } catch (std::exception& e) {
+        ELOG("MarketData reconnect failed! {}", e.what());
+        return -3;
+    } catch (...) {
+        ELOG("MarketData reconnect failed!");
+        return -4;
+    }
+    return 0;
+}
+
 bool CtpMarketDataCollector::isRunning() const {
     return is_running_.load(std::memory_order_relaxed);
 }

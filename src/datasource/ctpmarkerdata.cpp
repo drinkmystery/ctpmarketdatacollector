@@ -5,6 +5,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "utils/logger.h"
+#include "utils/global.h"
 
 int32 CtpMarketData::init(const CtpConfig& ctp_config) {
     is_inited_ = false;
@@ -106,6 +107,9 @@ int32 CtpMarketData::init(const CtpConfig& ctp_config) {
                 inst_ids.erase(instrument->InstrumentID);
             }
         });
+        ctpmdspi_.setOnFrontDisConnected([](int32) {
+            global::need_reconnect.store(true, std::memory_order_release);
+        });
     }
 
     is_inited_ = true;
@@ -147,5 +151,19 @@ int32 CtpMarketData::stop() {
         ctpmdapi_.reset(nullptr);
     }
     is_inited_ = false;
+    return 0;
+}
+
+int32 CtpMarketData::reConnect(const CtpConfig& ctp_config) {
+    auto result = stop();
+    if (result != 0) {
+        ELOG("Ctp reconnect failed while stoping pre instance! Result:{}", result);
+        return -1;
+    }
+    result = init(ctp_config);
+    if (result != 0) {
+        ELOG("Ctp reconnect init failed! Result:{}", result);
+        return -2;
+    }
     return 0;
 }

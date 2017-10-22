@@ -4,6 +4,7 @@
 
 #include "utils/common.h"
 #include "utils/logger.h"
+#include "utils/global.h"
 #include "collector/ctpmarketdatacollector.h"
 
 namespace {
@@ -56,6 +57,13 @@ int32 main(int32 argc, char** argv) {
     ILOG("Collector start success!");
 
     while (gIsRunning) {
+        if (global::need_reconnect.load(std::memory_order_relaxed)) {
+            auto result = collector.reConnect();
+            if (result == 0) {
+                ILOG("Collector reconnet success!");
+                global::need_reconnect.store(true, std::memory_order_release);
+            }
+        }
         std::this_thread::yield();
     }
     ILOG("Collector try stop");

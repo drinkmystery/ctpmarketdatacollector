@@ -201,6 +201,7 @@ int32 CtpMarketDataCollector::reConnect() {
             ELOG("MarketData reconnect failed! Result:{}", result);
             return -1;
         }
+        ctp_md_data_.subscribeMarketData(ctp_config_.instrument_ids);
         ILOG("MarketData reconnect success!");
     } catch (std::exception& e) {
         ELOG("MarketData reconnect failed! {}", e.what());

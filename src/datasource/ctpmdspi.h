@@ -13,6 +13,7 @@ public:
     CtpMdSpi() = default;
     ~CtpMdSpi() = default;
 
+    void clearCallback();
     void setOnFrontConnected(std::function<void()>&& fun);
     void setOnFrontDisConnected(std::function<void(int32)>&& fun);
     void setOnLoginFun(std::function<void(CThostFtdcRspUserLoginField*, CThostFtdcRspInfoField*)> fun);
@@ -85,7 +86,6 @@ public:
 
 private:
     utils::spinlock lock_;
-    void clearCallback();
     std::function<void()>      on_connected_fun_;
     std::function<void(int32)> on_disconnected_fun_;
     std::function<void(CThostFtdcRspUserLoginField*, CThostFtdcRspInfoField*)> on_login_fun_;

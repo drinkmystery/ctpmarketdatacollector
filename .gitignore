@@ -32,3 +32,9 @@ build
 
 # Mkdocs
 site
+
+#
+/mongodriver
+/boost/vcpkg-export-20171010-163718
+/mongodriver.rar
+/boost.7z

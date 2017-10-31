@@ -19,12 +19,21 @@ struct MongoConfig {
     string db;
 };
 
+
 struct MarketData {
     // TODO
     string instrument_id;
-    string date;
-    string value;
-    string value1;
+    string TradingDay;// 日期 格式20170101
+	string UpdateTime;// 时间 格式09:16:00
+	string ExchangeInstID; // 交易所 对应 CThostFtdcDepthMarketDataField ExchangeID
+	double high;
+	double close;
+	double open;
+	double low;
+	int volume;
+
+	int BidVolume1;
+	int AskVolume1;
 
     std::chrono::time_point<std::chrono::system_clock> last_tick_time;
     std::chrono::time_point<std::chrono::system_clock> last_update_time;

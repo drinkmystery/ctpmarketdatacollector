@@ -74,8 +74,18 @@ void MongoStore::process() {
             using bsoncxx::builder::basic::kvp;
             bsoncxx::builder::basic::document builder{};
             builder.append(kvp("id", data.instrument_id));
-            builder.append(kvp("date", bsoncxx::types::b_date(data.last_update_time)));
-            builder.append(kvp("value", data.value));
+			builder.append(kvp("date", data.TradingDay));
+			builder.append(kvp("updateTime", data.UpdateTime));
+			builder.append(kvp("exchange", data.ExchangeInstID));
+			builder.append(kvp("high", data.high));
+			builder.append(kvp("close", (data.close)));
+			builder.append(kvp("open", (data.open)));
+			builder.append(kvp("low",(data.low)));
+			builder.append(kvp("volume", (data.volume)));
+			builder.append(kvp("BidVolume1",(data.BidVolume1)));
+			builder.append(kvp("AskVolume1",(data.AskVolume1)));
+            builder.append(kvp("dateTime", bsoncxx::types::b_date(data.last_update_time)));
+            //builder.append(kvp("value", data.value));
 
             db_[data.instrument_id].insert_one(builder.view());
             DLOG("MongoDb update one data ok!");

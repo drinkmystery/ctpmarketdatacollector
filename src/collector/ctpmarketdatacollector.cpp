@@ -231,22 +231,44 @@ void CtpMarketDataCollector::process() {
         DLOG("Collector process one origin data");
         CThostFtdcDepthMarketDataField origin;
         if (ctp_md_data_.getData(origin)) {
-            MarketData data = {origin.InstrumentID,
-                               origin.UpdateTime,
-                               std::to_string(origin.LastPrice),
-                               std::to_string(origin.OpenPrice),
-                               std::chrono::system_clock::now()};
+
+
+			MarketData data = { origin.InstrumentID,
+								origin.TradingDay,
+                                origin.UpdateTime,
+								origin.ExchangeInstID,
+								origin.LastPrice,//high
+								origin.LastPrice,//close
+								origin.LastPrice,//open
+								origin.LastPrice,//low
+								origin.Volume,//volume
+								origin.BidVolume1,//BidVolume1
+								origin.AskVolume1,//AskVolume1
+                               std::chrono::system_clock::now(),//last_tick_time 最后一次更新时间
+							   std::chrono::system_clock::now() };//last_update_time 第一次更新时间
 
             auto it = data_records_.find(data.instrument_id);
             if (it != data_records_.end()) {
-                data.last_update_time = it->second.last_update_time;
-                it->second = data;
+				// one minute update once
+				auto now_minutes = date::floor<std::chrono::minutes>(std::chrono::system_clock::now());
+				auto update_minutes = date::floor<std::chrono::minutes>(it->second.last_update_time);
+				if (update_minutes == now_minutes) {
+					data.high = std::max(it->second.high, data.high);//最高价
+					data.low = std::min(it->second.low, data.low);//最低价
+					data.open = it->second.open;//期初开仓价格
+					data.volume += it->second.volume; //成交量
+				}
+
+				data.last_update_time = it->second.last_update_time;
+				it->second = data;
                 DLOG("Collector exist Instrument Id:{}", data.instrument_id);
             } else {
                 data_records_.insert({data.instrument_id, data});
                 DLOG("Collector new Instrument Id:{}", data.instrument_id);
             }
             DLOG("Collector process one origin data ok");
+
+
         }
     }
 
@@ -277,4 +299,5 @@ void CtpMarketDataCollector::process() {
             DLOG("Collector try update one data");
         }
     }
+	data_records_.clear();
 }

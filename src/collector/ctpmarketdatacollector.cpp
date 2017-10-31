@@ -299,5 +299,4 @@ void CtpMarketDataCollector::process() {
             DLOG("Collector try update one data");
         }
     }
-	data_records_.clear();
 }

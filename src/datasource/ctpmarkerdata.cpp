@@ -21,16 +21,16 @@ int32 CtpMarketData::init(const CtpConfig& ctp_config) {
             return -1;
         }
         ctpmdapi_ = {mdapi, [](CThostFtdcMdApi* mdapi) {
-                         // The Ctp's Document does not say how to release the api gracefully, maybe Release then Join,
-                         // NEED TEST! 2017/10/10 drinkmystery
-                         if (mdapi != nullptr) {
-                             mdapi->Release();
-                         }
-                         // The actul result is cannot call Join after Release! 2017/10/11 drinkmystery
-                         // if (mdapi != nullptr) {
-                         //    mdapi->Join();
-                         // }
-                     }};
+            // The Ctp's Document does not say how to release the api gracefully, maybe Release then Join,
+            // NEED TEST! 2017/10/10 drinkmystery
+            if (mdapi != nullptr) {
+                mdapi->Release();
+            }
+            // The actul result is cannot call Join after Release! 2017/10/11 drinkmystery
+            // if (mdapi != nullptr) {
+            //    mdapi->Join();
+            // }
+        }};
         ctpmdapi_->RegisterSpi(&ctpmdspi_);
         ILOG("Ctp create api instance success!");
     }
@@ -89,7 +89,11 @@ int32 CtpMarketData::init(const CtpConfig& ctp_config) {
     // 4. Set Spi callback.
     {
         ctpmdspi_.clearCallback();
-        ctpmdspi_.setOnDataFun([this](CThostFtdcDepthMarketDataField* data) { buffer_.push(*data); });
+        ctpmdspi_.setOnDataFun([this](CThostFtdcDepthMarketDataField* data) { 
+            if (data != nullptr) {
+                buffer_.push(MarketData(*data));
+            }
+        });
         ctpmdspi_.setOnSubFun([this](CThostFtdcSpecificInstrumentField* instrument, CThostFtdcRspInfoField* rsp) {
             if (instrument != nullptr && rsp != nullptr && rsp->ErrorID == 0) {
                 inst_ids_.insert(instrument->InstrumentID);
@@ -130,7 +134,7 @@ int32 CtpMarketData::subscribeMarketData(const string& instrument_ids) {
     return 0;
 }
 
-bool CtpMarketData::getData(CThostFtdcDepthMarketDataField& data) {
+bool CtpMarketData::getData(MarketData& data) {
     if (!is_inited_) {
         ELOG("CtpMarketData is not inited");
         return false;

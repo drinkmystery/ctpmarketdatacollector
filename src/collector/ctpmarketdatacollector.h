@@ -24,6 +24,7 @@ public:
 private:
     void loop();
     void process();
+    void tryRecord(MarketData& data);
 
     using DataMap = std::unordered_map<string, MarketData>;
 

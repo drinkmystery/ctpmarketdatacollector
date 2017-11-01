@@ -18,9 +18,9 @@ MongoStore::~MongoStore() {
 int32 MongoStore::init(const MongoConfig& mongo_config) {
     try {
         config_ = mongo_config;
-        uri_ = {mongo_config.address};
+        uri_    = {mongo_config.address};
         client_ = {uri_};
-        db_ = client_.database(mongo_config.db);
+        db_     = client_.database(mongo_config.db);
     } catch (const std::exception& e) {
         ELOG("MongoDb init failed! {}", e.what());
         return -1;
@@ -68,27 +68,23 @@ void MongoStore::process() {
     while (buffer_.pop(data)) {
         DLOG("MongoDb pop data");
         try {
-            DLOG("MongoDb data id:{},date:{},", data.instrument_id, data.date);
-
-            // TODO add more filed
             using bsoncxx::builder::basic::kvp;
             bsoncxx::builder::basic::document builder{};
             builder.append(kvp("id", data.instrument_id));
-			builder.append(kvp("date", data.TradingDay));
-			builder.append(kvp("updateTime", data.UpdateTime));
-			builder.append(kvp("exchange", data.ExchangeInstID));
-			builder.append(kvp("high", data.high));
-			builder.append(kvp("close", (data.close)));
-			builder.append(kvp("open", (data.open)));
-			builder.append(kvp("low",(data.low)));
-			builder.append(kvp("volume", (data.volume)));
-			builder.append(kvp("BidVolume1",(data.BidVolume1)));
-			builder.append(kvp("AskVolume1",(data.AskVolume1)));
-            builder.append(kvp("dateTime", bsoncxx::types::b_date(data.last_update_time)));
-            //builder.append(kvp("value", data.value));
+            builder.append(kvp("date", data.trading_day));
+            builder.append(kvp("updateTime", data.update_time));
+            builder.append(kvp("exchange", data.exchange_id));
+            builder.append(kvp("high", data.high));
+            builder.append(kvp("close", (data.close)));
+            builder.append(kvp("open", (data.open)));
+            builder.append(kvp("low", (data.low)));
+            builder.append(kvp("volume", (data.volume)));
+            builder.append(kvp("BidVolume1", (data.bid_volume1)));
+            builder.append(kvp("AskVolume1", (data.ask_volume1)));
+            builder.append(kvp("dateTime", bsoncxx::types::b_date(data.last_record_time)));
 
             db_[data.instrument_id].insert_one(builder.view());
-            DLOG("MongoDb update one data ok!");
+            DLOG("MongoDb record one data ok!");
         } catch (const std::exception& e) {
             ELOG("MongoDb insert failed! {}", e.what());
         }

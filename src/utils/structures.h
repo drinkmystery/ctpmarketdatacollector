@@ -3,6 +3,8 @@
 
 #include <chrono>
 
+#include "sfitctp/ThostFtdcUserApiStruct.h"
+
 #include "utils/common.h"
 
 struct CtpConfig {
@@ -19,24 +21,41 @@ struct MongoConfig {
     string db;
 };
 
-
 struct MarketData {
-    // TODO
-    string instrument_id;
-    string TradingDay;// 日期 格式20170101
-	string UpdateTime;// 时间 格式09:16:00
-	string ExchangeInstID; // 交易所 对应 CThostFtdcDepthMarketDataField ExchangeID
-	double high;
-	double close;
-	double open;
-	double low;
-	int volume;
+    MarketData()                  = default;
+    MarketData(const MarketData&) = default;
+    MarketData& operator=(const MarketData&) = default;
 
-	int BidVolume1;
-	int AskVolume1;
+    MarketData(const CThostFtdcDepthMarketDataField& origin) {
+        instrument_id    = origin.InstrumentID;
+        trading_day      = origin.TradingDay;
+        update_time      = origin.UpdateTime;
+        exchange_id      = origin.ExchangeInstID;
+        high             = origin.LastPrice;
+        close            = origin.LastPrice;
+        open             = origin.LastPrice;
+        low              = origin.LastPrice;
+        volume           = origin.Volume;
+        bid_volume1      = origin.BidVolume1;
+        ask_volume1      = origin.AskVolume1;
+        last_tick_time   = std::chrono::system_clock::now();
+        last_record_time = last_tick_time;
+    }
+
+    string instrument_id;
+    string trading_day;  // 日期 格式20170101
+    string update_time;  // 时间 格式09:16:00
+    string exchange_id;  // 交易所 对应 CThostFtdcDepthMarketDataField ExchangeID
+    double high;
+    double close;
+    double open;
+    double low;
+    int32  volume;
+    int32  bid_volume1;
+    int32  ask_volume1;
 
     std::chrono::time_point<std::chrono::system_clock> last_tick_time;
-    std::chrono::time_point<std::chrono::system_clock> last_update_time;
+    std::chrono::time_point<std::chrono::system_clock> last_record_time;
 };
 
 #endif  // _STRUCTURES_H_

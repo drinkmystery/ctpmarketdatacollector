@@ -226,77 +226,57 @@ void CtpMarketDataCollector::loop() {
 }
 
 void CtpMarketDataCollector::process() {
-    // TODO add value and ticktime
     while (!ctp_md_data_.empty()) {
-        DLOG("Collector process one origin data");
-        CThostFtdcDepthMarketDataField origin;
-        if (ctp_md_data_.getData(origin)) {
-
-
-			MarketData data = { origin.InstrumentID,
-								origin.TradingDay,
-                                origin.UpdateTime,
-								origin.ExchangeInstID,
-								origin.LastPrice,//high
-								origin.LastPrice,//close
-								origin.LastPrice,//open
-								origin.LastPrice,//low
-								origin.Volume,//volume
-								origin.BidVolume1,//BidVolume1
-								origin.AskVolume1,//AskVolume1
-                               std::chrono::system_clock::now(),//last_tick_time 最后一次更新时间
-							   std::chrono::system_clock::now() };//last_update_time 第一次更新时间
-
-            auto it = data_records_.find(data.instrument_id);
-            if (it != data_records_.end()) {
-				// one minute update once
-				auto now_minutes = date::floor<std::chrono::minutes>(std::chrono::system_clock::now());
-				auto update_minutes = date::floor<std::chrono::minutes>(it->second.last_update_time);
-				if (update_minutes == now_minutes) {
-					data.high = std::max(it->second.high, data.high);//最高价
-					data.low = std::min(it->second.low, data.low);//最低价
-					data.open = it->second.open;//期初开仓价格
-					data.volume += it->second.volume; //成交量
-				}
-
-				data.last_update_time = it->second.last_update_time;
-				it->second = data;
-                DLOG("Collector exist Instrument Id:{}", data.instrument_id);
-            } else {
-                data_records_.insert({data.instrument_id, data});
-                DLOG("Collector new Instrument Id:{}", data.instrument_id);
-            }
-            DLOG("Collector process one origin data ok");
-
-
-        }
-    }
-
-    auto now = std::chrono::system_clock::now();
-    for (auto& it : data_records_) {
-        bool need_update = false;
-        auto now_minutes = date::floor<std::chrono::minutes>(now);
-
-        auto update_minutes = date::floor<std::chrono::minutes>(it.second.last_update_time);
-        if (update_minutes == now_minutes) {
-            need_update = false;
+        DLOG("Collector process one tick data");
+        MarketData tick_data;
+        if (!ctp_md_data_.getData(tick_data)) {
             continue;
         }
 
-        auto tick_minutes = date::floor<std::chrono::minutes>(it.second.last_tick_time);
-        if (tick_minutes == now_minutes) {
-            need_update = true;
-        } else {
-            auto seconds = date::floor<std::chrono::seconds>(now - now_minutes).count();
-            if (seconds >= 2) {
-                need_update = true;
-            }
-        }
+        auto it = data_records_.find(tick_data.instrument_id);
+        if (it != data_records_.end()) {
+            auto new_tick_mintues  = date::floor<std::chrono::minutes>(tick_data.last_tick_time);
+            auto last_tick_minutes = date::floor<std::chrono::minutes>(it->second.last_tick_time);
 
-        if (need_update) {
-            it.second.last_update_time = now_minutes;
-            mongo_store_.getBuffer().push(it.second);
-            DLOG("Collector try update one data");
+            if (new_tick_mintues != last_tick_minutes) {
+                // Try record one mintue data into Mongo.
+                tryRecord(it->second);
+            } else {
+                // Memory updtae the highest and lowest inside one mintue.
+                tick_data.high = std::max(it->second.high, tick_data.high);
+                tick_data.low  = std::min(it->second.low, tick_data.low);
+                // Memory update open and volume inside one mintue.
+                tick_data.open = it->second.open;
+                tick_data.volume += it->second.volume;
+            }
+            tick_data.last_record_time = it->second.last_record_time;
+
+            it->second = tick_data;
+            DLOG("Collector exist Instrument Id:{}", tick_data.instrument_id);
+        } else {
+            data_records_.insert({tick_data.instrument_id, tick_data});
+            DLOG("Collector new Instrument Id:{}", tick_data.instrument_id);
         }
+        DLOG("Collector process one tick data ok!");
     }
+
+    for (auto& it : data_records_) {
+        tryRecord(it.second);
+    }
+}
+
+void CtpMarketDataCollector::tryRecord(MarketData& data) {
+    auto now_minutes         = date::floor<std::chrono::minutes>(std::chrono::system_clock::now());
+    auto last_record_minutes = date::floor<std::chrono::minutes>(data.last_record_time);
+
+    if (last_record_minutes == now_minutes) {
+        return;
+    }
+
+    data.last_record_time = now_minutes;
+    mongo_store_.getBuffer().push(data);
+    DLOG("Collector try record one data!");
+    data.volume = 0;
+
+    return;
 }

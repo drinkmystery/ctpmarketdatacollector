@@ -1,0 +1,24 @@
+{
+    "instruments": {
+      "rb1801": {
+        "destination": "rb000",
+        "mode": "mode1"
+      },
+      "i1801": {
+        "destination": "i0000",
+        "mode": "mode1"
+      }
+    },
+    "modes": {
+      "mode1": [
+        {
+          "begin": "08:00",  // UTC时间
+          "end": "09:00"
+        },
+        {
+          "begin": "10:00",
+          "end": "10:10"
+        }
+      ]
+    }
+  }

@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <set>
+#include <vector>
 
 #include <boost/lockfree/spsc_queue.hpp>
 
@@ -16,6 +17,7 @@ public:
     ~CtpMarketData() = default;
     int32 init(const CtpConfig& ctp_config);
     int32 subscribeMarketData(const string& instrument_ids);
+    int32 subscribeMarketData(const std::vector<string>& instrument_ids);
     bool getData(MarketData& data);
     bool empty();
     int32 stop();

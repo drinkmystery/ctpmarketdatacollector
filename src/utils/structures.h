@@ -28,8 +28,8 @@ struct MarketData {
 
     MarketData(const CThostFtdcDepthMarketDataField& origin) {
         instrument_id    = origin.InstrumentID;
-        trading_day      = origin.TradingDay;
-        update_time      = origin.UpdateTime;
+        action_day       = "";
+        action_time      = "";
         exchange_id      = origin.ExchangeInstID;
         high             = origin.LastPrice;
         close            = origin.LastPrice;
@@ -40,11 +40,13 @@ struct MarketData {
         ask_volume1      = origin.AskVolume1;
         last_tick_time   = std::chrono::system_clock::now();
         last_record_time = last_tick_time;
+		md_trading_day = origin.TradingDay;
+		md_update_time = origin.UpdateTime;
     }
 
     string instrument_id;
-    string trading_day;  // 日期 格式20170101
-    string update_time;  // 时间 格式09:16:00
+	string action_day;
+	string action_time;
     string exchange_id;  // 交易所 对应 CThostFtdcDepthMarketDataField ExchangeID
     double high;
     double close;
@@ -53,6 +55,8 @@ struct MarketData {
     int32  volume;
     int32  bid_volume1;
     int32  ask_volume1;
+	string md_trading_day;  // 日期 格式20170101
+	string md_update_time;  // 时间 格式09:16:00
 
     std::chrono::time_point<std::chrono::system_clock> last_tick_time;
     std::chrono::time_point<std::chrono::system_clock> last_record_time;

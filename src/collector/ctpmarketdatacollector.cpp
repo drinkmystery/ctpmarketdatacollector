@@ -6,6 +6,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <date/date.h>
+#include <iomanip>
+#include <ctime>
 
 #include "utils/logger.h"
 
@@ -247,7 +249,7 @@ void CtpMarketDataCollector::process() {
                 tick_data.low  = std::min(it->second.low, tick_data.low);
                 // Memory update open and volume inside one mintue.
                 tick_data.open = it->second.open;
-                tick_data.volume += it->second.volume;
+                tick_data.volume = it->second.volume;
             }
             tick_data.last_record_time = it->second.last_record_time;
 
@@ -272,8 +274,15 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
     if (last_record_minutes == now_minutes) {
         return;
     }
-
+    time_t time = std::chrono::system_clock::to_time_t(data.last_record_time);
+    tm local_tm;
+    localtime_s(&local_tm,&time);
+    char dateBuffer[20],timeBuffer[20];
+    strftime(dateBuffer, sizeof(dateBuffer), "%Y-%m-%d", &local_tm);
+    strftime(timeBuffer, sizeof(timeBuffer), "%H:%M:%S", &local_tm);
     data.last_record_time = now_minutes;
+    data.action_day = string(dateBuffer);
+    data.action_time = string(timeBuffer);
     mongo_store_.getBuffer().push(data);
     DLOG("Collector try record one data!");
     data.volume = 0;

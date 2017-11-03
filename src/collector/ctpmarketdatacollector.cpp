@@ -332,8 +332,8 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
         auto midnight       = date::floor<date::days>(now_minutes);
         auto since_midnight = (now_minutes - midnight).count();
         for (const auto& duration : it.value()) {
-            auto begin = utils::parse(duration["begin"]).time_since_epoch().count();
-            auto end   = utils::parse(duration["end"]).time_since_epoch().count();
+            auto begin = utils::parse(duration["begin"]).count();
+            auto end   = utils::parse(duration["end"]).count();
             if (begin < since_midnight && since_midnight <= end + 1) {
                 need_record = true;
                 break;

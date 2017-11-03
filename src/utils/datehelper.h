@@ -9,11 +9,9 @@
 
 namespace utils {
 
-using minute_point = std::chrono::time_point<std::chrono::system_clock, std::chrono::minutes>;
-
-minute_point parse(const std::string& str) {
-    std::istringstream in(str);
-    minute_point       tp;
+std::chrono::minutes parse(const std::string& str) {
+    std::istringstream   in(str);
+    std::chrono::minutes tp;
     in >> date::parse("%H:%M", tp);
     return tp;
 }

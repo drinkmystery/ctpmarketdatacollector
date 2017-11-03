@@ -324,12 +324,7 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
     if (last_record_minutes == now_minutes) {
         return;
     }
-    time_t time = std::chrono::system_clock::to_time_t(data.last_record_time);
-    tm local_tm;
-    localtime_s(&local_tm,&time);
-    char dateBuffer[20],timeBuffer[20];
-    strftime(dateBuffer, sizeof(dateBuffer), "%Y-%m-%d", &local_tm);
-    strftime(timeBuffer, sizeof(timeBuffer), "%H:%M:%S", &local_tm);
+
     data.last_record_time = now_minutes;
     bool need_record      = false;
     auto mode_name        = instrument_config_["instruments"][data.instrument_id]["mode"].get<string>();
@@ -342,7 +337,7 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
         for (const auto& duration : it.value()) {
             auto begin = utils::parse(duration["begin"]).count();
             auto end   = utils::parse(duration["end"]).count();
-            ILOG("beginTime:{} endTime:{} begin:{},end:{},midNight:{}",duration["begin"].get<string>(), duration["end"].get<string>(),begin, end, since_midnight);
+            //ILOG("beginTime:{} endTime:{} begin:{},end:{},midNight:{}",duration["begin"].get<string>(), duration["end"].get<string>(),begin, end, since_midnight);
             if (begin < since_midnight && since_midnight <= end + 1) {
                 need_record = true;
                 break;
@@ -352,15 +347,19 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
         need_record = true;
     }
 
-    if (need_record) {
-        mongo_store_.getBuffer().push(data);
-    }
-
+    time_t time = std::chrono::system_clock::to_time_t(data.last_record_time);
+    tm local_tm;
+    localtime_s(&local_tm, &time);
+    char dateBuffer[20], timeBuffer[20];
+    strftime(dateBuffer, sizeof(dateBuffer), "%Y-%m-%d", &local_tm);
+    strftime(timeBuffer, sizeof(timeBuffer), "%H:%M:%S", &local_tm);
     data.action_day = string(dateBuffer);
     data.action_time = string(timeBuffer);
-    mongo_store_.getBuffer().push(data);
-    DLOG("Collector try record one data!");
-    data.volume = 0;
 
+    if (need_record) {
+        mongo_store_.getBuffer().push(data);
+        DLOG("Collector try record one data!");
+        data.volume = 0;
+    }
     return;
 }

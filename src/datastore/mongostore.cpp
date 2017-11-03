@@ -83,7 +83,7 @@ void MongoStore::process() {
             builder.append(kvp("AskVolume1", (data.ask_volume1)));
             builder.append(kvp("mdTradingDay", data.md_trading_day));
             builder.append(kvp("mdUpdateTime", data.md_update_time));
-            //builder.append(kvp("recordTime", bsoncxx::types::b_date(data.last_record_time)));
+            builder.append(kvp("recordTime", bsoncxx::types::b_date(data.last_record_time)));
 
             db_[data.destination_id].insert_one(builder.view());
             DLOG("MongoDb record one data ok!");

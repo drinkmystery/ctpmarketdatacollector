@@ -60,6 +60,8 @@ struct MarketData {
 
     std::chrono::time_point<std::chrono::system_clock> last_tick_time;
     std::chrono::time_point<std::chrono::system_clock> last_record_time;
+
+    string destination_id;
 };
 
 #endif  // _STRUCTURES_H_

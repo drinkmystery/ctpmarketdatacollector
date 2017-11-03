@@ -47,9 +47,9 @@ endif()
 target_link_libraries(json-schema-validator
     PUBLIC
         json-hpp)
-target_compile_definitions(json-schema-validator
-    PRIVATE
-        -DJSON_SCHEMA_VALIDATOR_EXPORTS)
+# target_compile_definitions(json-schema-validator
+#    PRIVATE
+#        -DJSON_SCHEMA_VALIDATOR_EXPORTS)
 
 # regex with boost if gcc < 4.8 - default is std::regex
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

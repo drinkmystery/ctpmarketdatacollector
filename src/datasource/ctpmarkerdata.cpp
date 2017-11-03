@@ -134,6 +134,19 @@ int32 CtpMarketData::subscribeMarketData(const string& instrument_ids) {
     return 0;
 }
 
+int32 CtpMarketData::subscribeMarketData(const std::vector<string>& instrument_ids) {
+    if (!is_inited_) {
+        ELOG("CtpMarketData is not inited");
+        return -1;
+    }
+    std::vector<char*> char_instrument_ids;
+    for (const auto& instrument_id : instrument_ids) {
+        char_instrument_ids.emplace_back(const_cast<char*>(instrument_id.c_str()));
+    }
+    return ctpmdapi_->SubscribeMarketData(&(char_instrument_ids[0]),
+                                          static_cast<int32>(char_instrument_ids.size()));
+}
+
 bool CtpMarketData::getData(MarketData& data) {
     if (!is_inited_) {
         ELOG("CtpMarketData is not inited");

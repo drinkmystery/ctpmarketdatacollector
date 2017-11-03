@@ -7,6 +7,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HEADER_FILES})
 add_executable(ctp-marketdata-collector ${CPP_FILES} ${HEADER_FILES})
 target_include_directories(ctp-marketdata-collector PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ctp-marketdata-collector
+                      json-schema-validator
                       ${Boost_LIBRARIES}
                       ${MONGOC_STATIC_LIBRARIES}
                       libmongocxx
@@ -16,4 +17,7 @@ target_compile_definitions(ctp-marketdata-collector
                            PRIVATE ${MONGOC_STATIC_DEFINITIONS}
                            PRIVATE MONGOCXX_STATIC
                            PRIVATE BSONCXX_STATIC)
-target_compile_options(ctp-marketdata-collector PRIVATE "/utf-8")
+# target_compile_options(ctp-marketdata-collector PRIVATE "/utf-8")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+endif()

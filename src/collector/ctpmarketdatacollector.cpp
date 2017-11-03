@@ -1,15 +1,21 @@
 ﻿#include "ctpmarketdatacollector.h"
 
 #include <iostream>
+#include <fstream>
 #include <chrono>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <date/date.h>
+#include <spdlog/fmt/ostr.h>
+#include <json-schema.hpp>
 #include <iomanip>
 #include <ctime>
 
 #include "utils/logger.h"
+#include "utils/scopeguard.h"
+#include "utils/schemadefine.h"
+#include "utils/datehelper.h"
 
 CtpMarketDataCollector::~CtpMarketDataCollector() {
     is_running_.store(false, std::memory_order_release);
@@ -29,7 +35,8 @@ int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
     po::options_description cmdline_desc("Options");
     cmdline_desc.add_options()
         ("help,h", "print this help message")
-        ("conf,c", po::value<string>()->required(), "conf file");
+        ("conf,c", po::value<string>()->required(), "conf file")
+        ("json,j", po::value<string>()->required(), "json file");
     // clang-format on
 
     try {
@@ -57,7 +64,6 @@ int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
         ("ctp.password", po::value<string>()->required())
         ("ctp.mdAddress", po::value<string>()->required())
         ("ctp.flowPath", po::value<string>()->required())
-        ("ctp.instrumentIDs", po::value<string>()->required())
         ("mongo.address", po::value<string>()->required())
         ("mongo.db", po::value<string>()->required());
     // clang-format on
@@ -81,14 +87,13 @@ int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
     }
 
     try {
-        ctp_config_.broker_id      = app_options["ctp.brokerID"].as<string>();
-        ctp_config_.user_id        = app_options["ctp.userID"].as<string>();
-        ctp_config_.password       = app_options["ctp.password"].as<string>();
-        ctp_config_.md_address     = app_options["ctp.mdAddress"].as<string>();
-        ctp_config_.flow_path      = app_options["ctp.flowPath"].as<string>();
-        ctp_config_.instrument_ids = app_options["ctp.instrumentIDs"].as<string>();
-        mongo_config_.address      = app_options["mongo.address"].as<string>();
-        mongo_config_.db           = app_options["mongo.db"].as<string>();
+        ctp_config_.broker_id  = app_options["ctp.brokerID"].as<string>();
+        ctp_config_.user_id    = app_options["ctp.userID"].as<string>();
+        ctp_config_.password   = app_options["ctp.password"].as<string>();
+        ctp_config_.md_address = app_options["ctp.mdAddress"].as<string>();
+        ctp_config_.flow_path  = app_options["ctp.flowPath"].as<string>();
+        mongo_config_.address  = app_options["mongo.address"].as<string>();
+        mongo_config_.db       = app_options["mongo.db"].as<string>();
     } catch (std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
         return -7;
@@ -97,7 +102,50 @@ int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
         return -8;
     }
 
+    auto result = loadJson(app_options["json"].as<string>());
+    if (result != 0) {
+        return -9;
+    }
     is_configed_ = true;
+    return 0;
+}
+
+int32 CtpMarketDataCollector::loadJson(const string& json_file) {
+    namespace fs = boost::filesystem;
+    using nlohmann::json_schema_draft4::json_validator;
+    try {
+        // 1. load json file
+        auto json_file_path = fs::path(json_file);
+        if (!fs::exists(json_file_path) || !fs::is_regular_file(json_file_path)) {
+            ELOG("Load json: No such json file:{}", json_file_path);
+            return -1;
+        }
+        auto input = std::ifstream(json_file_path.string());
+        auto guard = utils::make_guard([&input] { input.close(); });
+        if (!input.is_open()) {
+            ELOG("Load json: json file:{} open failed!", json_file_path);
+        }
+        instrument_config_ = json::parse(input);
+
+        // 2. validate json file
+        auto           schema = json::parse(constants::schema);
+        json_validator validator;
+        validator.set_root_schema(schema);
+        validator.validate(instrument_config_);
+    } catch (std::exception& e) {
+        ELOG("Load json:{}", e.what());
+        return -2;
+    } catch (...) {
+        ELOG("Load json: Unknown error!");
+        return -3;
+    }
+    instrument_ids_.clear();
+    instrument_ids_.reserve(instrument_config_["instruments"].size());
+    for (auto it = instrument_config_["instruments"].begin(); it != instrument_config_["instruments"].end(); ++it) {
+        instrument_ids_.emplace_back(it.key());
+    }
+
+    ILOG("Load json: successs!");
     return 0;
 }
 
@@ -176,7 +224,7 @@ int32 CtpMarketDataCollector::start() {
     is_running_.store(true, std::memory_order_release);
     inter_thread_ = std::thread(&CtpMarketDataCollector::loop, this);
     // ctp_md_data_ is started in CtpMarketDataCollector::init by ctp_md_data_.init
-    ctp_md_data_.subscribeMarketData(ctp_config_.instrument_ids);
+    ctp_md_data_.subscribeMarketData(instrument_ids_);
     return 0;
 }
 
@@ -203,7 +251,7 @@ int32 CtpMarketDataCollector::reConnect() {
             ELOG("MarketData reconnect failed! Result:{}", result);
             return -1;
         }
-        ctp_md_data_.subscribeMarketData(ctp_config_.instrument_ids);
+        ctp_md_data_.subscribeMarketData(instrument_ids_);
         ILOG("MarketData reconnect success!");
     } catch (std::exception& e) {
         ELOG("MarketData reconnect failed! {}", e.what());
@@ -252,10 +300,12 @@ void CtpMarketDataCollector::process() {
                 tick_data.volume = it->second.volume;
             }
             tick_data.last_record_time = it->second.last_record_time;
+            tick_data.destination_id = it->second.destination_id;
 
             it->second = tick_data;
             DLOG("Collector exist Instrument Id:{}", tick_data.instrument_id);
         } else {
+            tick_data.destination_id = instrument_config_["instruments"][tick_data.instrument_id]["destination"].get<string>();
             data_records_.insert({tick_data.instrument_id, tick_data});
             DLOG("Collector new Instrument Id:{}", tick_data.instrument_id);
         }
@@ -281,6 +331,31 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
     strftime(dateBuffer, sizeof(dateBuffer), "%Y-%m-%d", &local_tm);
     strftime(timeBuffer, sizeof(timeBuffer), "%H:%M:%S", &local_tm);
     data.last_record_time = now_minutes;
+    bool need_record      = false;
+    auto mode_name        = instrument_config_["instruments"][data.instrument_id]["mode"].get<string>();
+    auto it               = instrument_config_["modes"].find(mode_name);
+
+    if (it != instrument_config_["modes"].end()) {
+        // midnight is 00:00
+        auto midnight       = date::floor<date::days>(now_minutes);
+        auto since_midnight = (now_minutes - midnight).count();
+        for (const auto& duration : it.value()) {
+            auto begin = utils::parse(duration["begin"]).count();
+            auto end   = utils::parse(duration["end"]).count();
+            ILOG("beginTime:{} endTime:{} begin:{},end:{},midNight:{}",duration["begin"].get<string>(), duration["end"].get<string>(),begin, end, since_midnight);
+            if (begin < since_midnight && since_midnight <= end + 1) {
+                need_record = true;
+                break;
+            }
+        }
+    } else {
+        need_record = true;
+    }
+
+    if (need_record) {
+        mongo_store_.getBuffer().push(data);
+    }
+
     data.action_day = string(dateBuffer);
     data.action_time = string(timeBuffer);
     mongo_store_.getBuffer().push(data);

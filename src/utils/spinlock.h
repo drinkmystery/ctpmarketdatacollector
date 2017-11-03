@@ -23,4 +23,5 @@ private:
 };
 
 }  // namespace utils
+
 #endif  // _SPINLOCK_H_

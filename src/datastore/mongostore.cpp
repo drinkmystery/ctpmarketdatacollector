@@ -85,7 +85,7 @@ void MongoStore::process() {
             builder.append(kvp("mdUpdateTime", data.md_update_time));
             //builder.append(kvp("recordTime", bsoncxx::types::b_date(data.last_record_time)));
 
-            db_[data.instrument_id].insert_one(builder.view());
+            db_[data.destination_id].insert_one(builder.view());
             DLOG("MongoDb record one data ok!");
         } catch (const std::exception& e) {
             ELOG("MongoDb insert failed! {}", e.what());

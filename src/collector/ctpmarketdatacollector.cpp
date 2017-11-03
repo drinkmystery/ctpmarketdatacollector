@@ -298,6 +298,7 @@ void CtpMarketDataCollector::process() {
                 tick_data.volume += it->second.volume;
             }
             tick_data.last_record_time = it->second.last_record_time;
+            tick_data.destination_id = it->second.destination_id;
 
             it->second = tick_data;
             DLOG("Collector exist Instrument Id:{}", tick_data.instrument_id);

@@ -13,6 +13,7 @@ std::chrono::minutes parse(const std::string& str) {
     std::istringstream   in(str);
     std::chrono::minutes tp;
     in >> date::parse("%H:%M", tp);
+    
     return tp;
 }
 

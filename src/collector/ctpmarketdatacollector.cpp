@@ -11,6 +11,7 @@
 #include <json-schema.hpp>
 #include <iomanip>
 #include <ctime>
+#include <ratio>
 
 #include "utils/logger.h"
 #include "utils/scopeguard.h"
@@ -246,12 +247,14 @@ int32 CtpMarketDataCollector::stop() {
 
 int32 CtpMarketDataCollector::reConnect() {
     try {
+        data_records_.clear();//clear data record for reconnect
         auto result = ctp_md_data_.reConnect(ctp_config_);
         if (result != 0) {
             ELOG("MarketData reconnect failed! Result:{}", result);
             return -1;
         }
         ctp_md_data_.subscribeMarketData(instrument_ids_);
+
         ILOG("MarketData reconnect success!");
     } catch (std::exception& e) {
         ELOG("MarketData reconnect failed! {}", e.what());
@@ -347,6 +350,8 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
         need_record = true;
     }
 
+
+
     time_t time = std::chrono::system_clock::to_time_t(data.last_record_time);
     tm local_tm;
     localtime_s(&local_tm, &time);
@@ -357,8 +362,11 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
     data.action_time = string(timeBuffer);
 
     if (need_record) {
+        std::chrono::duration<int, std::ratio<60 * 60>> one_hour(1);
+        data.last_record_time = data.last_record_time + 8 * one_hour;//utc+8 for mongoDb
         mongo_store_.getBuffer().push(data);
         DLOG("Collector try record one data!");
+        data.last_record_time = data.last_record_time - 8 * one_hour;//utc for record data
         data.volume = 0;
     }
     return;

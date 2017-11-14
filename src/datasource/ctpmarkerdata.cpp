@@ -170,9 +170,6 @@ int32 CtpMarketData::stop() {
 
 int32 CtpMarketData::reConnect(const CtpConfig& ctp_config) {
     auto result = stop();
-    //while (!this->buffer_.empty()) {
-    //    this->buffer_.pop();
-    //}
     
     if (result != 0) {
         ELOG("Ctp reconnect failed while stoping pre instance! Result:{}", result);

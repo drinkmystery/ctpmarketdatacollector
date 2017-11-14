@@ -7,7 +7,7 @@
 #include "utils/logger.h"
 
 mongocxx::instance MongoStore::instance_ = {};
-
+using namespace  std::chrono_literals;
 MongoStore::~MongoStore() {
     is_running_.store(false, std::memory_order_release);
     if (inter_thread_.joinable()) {
@@ -60,7 +60,8 @@ void MongoStore::process() {
     auto count = buffer_.read_available();
     if (count == 0) {
         // should yield?
-        std::this_thread::yield();
+        //std::this_thread::yield();
+		std::this_thread::sleep_for(1s);
         return;
     }
     DLOG("MongoDb {} data", count);

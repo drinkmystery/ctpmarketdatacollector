@@ -66,7 +66,8 @@ int32 main(int32 argc, char** argv) {
                 ILOG("Collector reconnet success!");
             }
         }
-        std::this_thread::yield();
+		using namespace std::chrono_literals;
+        std::this_thread::sleep_for(5s);//
     }
     ILOG("Collector try stop");
     result = collector.stop();

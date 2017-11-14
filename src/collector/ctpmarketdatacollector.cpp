@@ -362,7 +362,7 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
     data.action_time = string(timeBuffer);
 
     if (need_record) {
-        std::chrono::duration<int, std::ratio<60 * 60>> one_hour(1);
+		std::chrono::hours one_hour(1);
         data.last_record_time = data.last_record_time + 8 * one_hour;//utc+8 for mongoDb
         mongo_store_.getBuffer().push(data);
         DLOG("Collector try record one data!");

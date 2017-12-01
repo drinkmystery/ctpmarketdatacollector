@@ -11,7 +11,25 @@
         "al1801": {
             "destination": "al0000",
             "mode": "mode4"
+        },
+        "ru1801": {
+            "destination": "ru0000",
+            "mode": "mode2"
+        },
+        "y1801": {
+            "destination": "y0000",
+            "mode": "mode3"
+        },
+	"FG801": {
+            "destination": "fg0000",
+            "mode": "mode3"
+        },
+	"zn1801": {
+            "destination": "zn0000",
+            "mode": "mode4"
         }
+
+
     },
     "modes": {
         "mode1": [

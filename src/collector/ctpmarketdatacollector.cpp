@@ -273,8 +273,8 @@ bool CtpMarketDataCollector::isRunning() const {
 void CtpMarketDataCollector::loop() {
     while (is_running_.load(std::memory_order_relaxed)) {
         process();
-        // should yield?
-        std::this_thread::yield();
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(250ms);//
     }
 }
 

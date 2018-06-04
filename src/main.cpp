@@ -19,6 +19,8 @@ extern "C" void signal_handler(int signal) {
     is_running = 0;
 }
 
+
+
 int32 main(int32 argc, char** argv) {
     is_running = 1;
     std::signal(SIGTERM, signal_handler);

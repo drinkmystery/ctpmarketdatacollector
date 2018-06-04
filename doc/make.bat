@@ -1,0 +1,1 @@
+cmake -G "Visual Studio 15 2017 Win64" -DCMAKE_TOOLCHAIN_FILE="D:\AutoTrade\ctpMarketDataCollector\boost\vcpkg-export-20171010-163718\scripts\buildsystems\vcpkg.cmake" -DCMAKE_PREFIX_PATH="D:\AutoTrade\ctpMarketDataCollector\mongodriver" -DBoost_NO_BOOST_CMAKE="ON" ..

@@ -225,6 +225,9 @@ int32 CtpMarketDataCollector::start() {
     is_running_.store(true, std::memory_order_release);
     inter_thread_ = std::thread(&CtpMarketDataCollector::loop, this);
     // ctp_md_data_ is started in CtpMarketDataCollector::init by ctp_md_data_.init
+    //for (auto iter : instrument_ids_) {
+    //    ELOG("Instrument: {}", iter);
+    //}
     ctp_md_data_.subscribeMarketData(instrument_ids_);
     return 0;
 }
@@ -247,7 +250,7 @@ int32 CtpMarketDataCollector::stop() {
 
 int32 CtpMarketDataCollector::reConnect() {
     try {
-        data_records_.clear();//clear data record for reconnect
+        data_records_.clear();  // clear data record for reconnect
         auto result = ctp_md_data_.reConnect(ctp_config_);
         if (result != 0) {
             ELOG("MarketData reconnect failed! Result:{}", result);
@@ -274,7 +277,7 @@ void CtpMarketDataCollector::loop() {
     while (is_running_.load(std::memory_order_relaxed)) {
         process();
         using namespace std::chrono_literals;
-        std::this_thread::sleep_for(250ms);//
+        std::this_thread::sleep_for(250ms);  //
     }
 }
 
@@ -299,16 +302,17 @@ void CtpMarketDataCollector::process() {
                 tick_data.high = std::max(it->second.high, tick_data.high);
                 tick_data.low  = std::min(it->second.low, tick_data.low);
                 // Memory update open and volume inside one mintue.
-                tick_data.open = it->second.open;
+                tick_data.open   = it->second.open;
                 tick_data.volume = it->second.volume;
             }
             tick_data.last_record_time = it->second.last_record_time;
-            tick_data.destination_id = it->second.destination_id;
+            tick_data.destination_id   = it->second.destination_id;
 
             it->second = tick_data;
             DLOG("Collector exist Instrument Id:{}", tick_data.instrument_id);
         } else {
-            tick_data.destination_id = instrument_config_["instruments"][tick_data.instrument_id]["destination"].get<string>();
+            tick_data.destination_id =
+                instrument_config_["instruments"][tick_data.instrument_id]["destination"].get<string>();
             data_records_.insert({tick_data.instrument_id, tick_data});
             DLOG("Collector new Instrument Id:{}", tick_data.instrument_id);
         }
@@ -321,6 +325,7 @@ void CtpMarketDataCollector::process() {
 }
 
 void CtpMarketDataCollector::tryRecord(MarketData& data) {
+   
     auto now_minutes         = date::floor<std::chrono::minutes>(std::chrono::system_clock::now());
     auto last_record_minutes = date::floor<std::chrono::minutes>(data.last_record_time);
 
@@ -340,7 +345,8 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
         for (const auto& duration : it.value()) {
             auto begin = utils::parse(duration["begin"]).count();
             auto end   = utils::parse(duration["end"]).count();
-            //ILOG("beginTime:{} endTime:{} begin:{},end:{},midNight:{}",duration["begin"].get<string>(), duration["end"].get<string>(),begin, end, since_midnight);
+            // ILOG("beginTime:{} endTime:{} begin:{},end:{},midNight:{}",duration["begin"].get<string>(),
+            // duration["end"].get<string>(),begin, end, since_midnight);
             if (begin < since_midnight && since_midnight <= end + 1) {
                 need_record = true;
                 break;
@@ -350,24 +356,22 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
         need_record = true;
     }
 
-
-
     time_t time = std::chrono::system_clock::to_time_t(data.last_record_time);
-    tm local_tm;
+    tm     local_tm;
     localtime_s(&local_tm, &time);
     char dateBuffer[20], timeBuffer[20];
     strftime(dateBuffer, sizeof(dateBuffer), "%Y-%m-%d", &local_tm);
     strftime(timeBuffer, sizeof(timeBuffer), "%H:%M:%S", &local_tm);
-    data.action_day = string(dateBuffer);
+    data.action_day  = string(dateBuffer);
     data.action_time = string(timeBuffer);
 
     if (need_record) {
-		std::chrono::hours one_hour(1);
-        data.last_record_time = data.last_record_time + 8 * one_hour;//utc+8 for mongoDb
+        std::chrono::hours one_hour(1);
+        data.last_record_time = data.last_record_time + 8 * one_hour;  // utc+8 for mongoDb
         mongo_store_.getBuffer().push(data);
         DLOG("Collector try record one data!");
-        data.last_record_time = data.last_record_time - 8 * one_hour;//utc for record data
-        data.volume = 0;
+        data.last_record_time = data.last_record_time - 8 * one_hour;  // utc for record data
+        data.volume           = 0;
     }
     return;
 }

@@ -58,6 +58,7 @@ void MongoStore::loop() {
 }
 
 void MongoStore::process() {
+    ELOG("MongoDb insert! ");
     auto count = buffer_.read_available();
     if (count == 0) {
         return;

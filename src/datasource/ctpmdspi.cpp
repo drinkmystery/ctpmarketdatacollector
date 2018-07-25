@@ -73,7 +73,7 @@ void CtpMdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField* pRspUserLogin,
              pRspInfo->ErrorID,
              pRspInfo->ErrorMsg);
     } else if (pRspUserLogin && bIsLast) {
-        ILOG("Ctp Login success! RequestID:{},IsLast:{}", nRequestID, bIsLast);
+        ILOG("Ctp Login success! RequestID:{},IsLast:{},ErrorId:{}", nRequestID, bIsLast,pRspInfo->ErrorID);
     }
 
     std::lock_guard<utils::spinlock> guard(lock_);
@@ -120,10 +120,10 @@ void CtpMdSpi::OnRspSubMarketData(CThostFtdcSpecificInstrumentField* pSpecificIn
              pRspInfo->ErrorID,
              pRspInfo->ErrorMsg);
     } else if (pSpecificInstrument) {
-        ILOG("Ctp SubMarketData success! RequestID:{},IsLast:{},InstrumentID:{}",
+        ILOG("Ctp SubMarketData success! RequestID:{},IsLast:{},InstrumentID:{},ErrodId:{}",
              nRequestID,
              bIsLast,
-             pSpecificInstrument->InstrumentID);
+             pSpecificInstrument->InstrumentID,pRspInfo->ErrorID);
     }
     std::lock_guard<utils::spinlock> guard(lock_);
     if (on_sub_fun_) {
@@ -149,7 +149,7 @@ void CtpMdSpi::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField* pSpecific
     }
     std::lock_guard<utils::spinlock> guard(lock_);
     if (on_unsub_fun_) {
-        std::invoke(on_sub_fun_, pSpecificInstrument, pRspInfo);
+        std::invoke(on_unsub_fun_, pSpecificInstrument, pRspInfo);
     }
 }
 
@@ -190,12 +190,14 @@ void CtpMdSpi::OnRspUnSubForQuoteRsp(CThostFtdcSpecificInstrumentField* pSpecifi
 }
 
 void CtpMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField* pDepthMarketData) {
+    //ELOG("Ctp receive MarketData.");
     if (pDepthMarketData) {
         DLOG("Ctp receive MarketData.");
     }
     std::lock_guard<utils::spinlock> guard(lock_);
     if (on_data_fun_) {
         std::invoke(on_data_fun_, pDepthMarketData);
+        //ELOG("Ctp receive");
     }
 }
 

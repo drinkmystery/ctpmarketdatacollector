@@ -58,12 +58,13 @@ void MongoStore::loop() {
 }
 
 void MongoStore::process() {
-    ELOG("MongoDb insert! ");
+  
     auto count = buffer_.read_available();
+    
+    DLOG("MongoDb insert!count:{} ",count);
     if (count == 0) {
         return;
     }
-    DLOG("MongoDb {} data", count);
     MarketData data;
     while (buffer_.pop(data)) {
         DLOG("MongoDb pop data");
@@ -79,7 +80,20 @@ void MongoStore::process() {
             builder.append(kvp("open", (data.open)));
             builder.append(kvp("low", (data.low)));
             builder.append(kvp("volume", (data.volume)));
-            builder.append(kvp("position", (0)));
+            builder.append(kvp("marketVol", (data.marketVol)));
+            builder.append(kvp("highestPrice", (data.highest_price)));
+            builder.append(kvp("lowestPrice", (data.lowest_price)));
+            builder.append(kvp("openPrice", (data.open_price)));
+            builder.append(kvp("preSettlementPrice", (data.PreSettlementPrice)));
+            builder.append(kvp("preClosePrice", (data.PreClosePrice)));
+            builder.append(kvp("Turnover", (data.Turnover)));
+            builder.append(kvp("PreOpenInterest", (data.PreOpenInterest)));
+            builder.append(kvp("OpenInterest", (data.OpenInterest)));
+            builder.append(kvp("UpperLimitPrice", (data.UpperLimitPrice)));
+            builder.append(kvp("LowerLimitPrice", (data.LowerLimitPrice)));
+
+
+            //builder.append(kvp("position", (0)));
             //builder.append(kvp("BidVolume1", (data.bid_volume1)));
             //builder.append(kvp("AskVolume1", (data.ask_volume1)));
             builder.append(kvp("mdTradingDay", data.md_trading_day));
@@ -87,7 +101,7 @@ void MongoStore::process() {
             builder.append(kvp("recordTime", bsoncxx::types::b_date(data.last_record_time)));
 
             db_[data.destination_id].insert_one(builder.view());
-            DLOG("MongoDb record one data ok!");
+            ILOG("MongoDb record one data ok!Inst:{},updateTime:{}",data.instrument_id,data.md_update_time);
         } catch (const std::exception& e) {
             ELOG("MongoDb insert failed! {}", e.what());
         }

@@ -194,6 +194,20 @@ void CtpMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField* pDepthMarket
     if (pDepthMarketData) {
         DLOG("Ctp receive MarketData.");
     }
+    // clang-format off
+    DLOG(
+        "TradingDay:{},InstrumentID;{},ExchangeID:{},ExchangeInstID:{},LastPrice:{},PreSettlementPrice:{},PreClosePrice:{},PreOpenInterest:{},OpenPrice:{},\
+            HighestPrice:{},LowestPrice:{},Volume:{},Turnover:{},OpenInterest:{},ClosePrice:{},SettlementPrice:{},UpperLimitPrice:{},LowerLimitPrice:{},PreDelta:{},CurrDelta:{},\
+            UpdateTime:{},UpdateMillisec:{},BidPrice1:{},BidVolume1:{},AskPrice1:{},AskVolume1:{},BidPrice2:{},BidVolume2:{},AskPrice2:{},AskVolume2:{},AveragePrice:{},\
+            ActionDay:{}\
+             ",
+        pDepthMarketData->TradingDay,pDepthMarketData->InstrumentID,pDepthMarketData->ExchangeID,pDepthMarketData->ExchangeInstID, pDepthMarketData->LastPrice,pDepthMarketData->PreSettlementPrice,
+        pDepthMarketData->PreClosePrice,pDepthMarketData->PreOpenInterest,pDepthMarketData->OpenPrice,pDepthMarketData->HighestPrice, pDepthMarketData->LowestPrice,pDepthMarketData->Volume,
+        pDepthMarketData->Turnover,pDepthMarketData->OpenInterest,pDepthMarketData->ClosePrice,pDepthMarketData->SettlementPrice, pDepthMarketData->UpperLimitPrice,pDepthMarketData->LowerLimitPrice,
+        pDepthMarketData->PreDelta,pDepthMarketData->CurrDelta,pDepthMarketData->UpdateTime,pDepthMarketData->UpdateMillisec,pDepthMarketData->BidPrice1, pDepthMarketData->BidVolume1,pDepthMarketData->AskPrice1,
+        pDepthMarketData->AskVolume1,pDepthMarketData->BidPrice2,pDepthMarketData->BidVolume2,pDepthMarketData->AskPrice2, pDepthMarketData->AskVolume2,pDepthMarketData->AveragePrice,
+        pDepthMarketData->ActionDay   );
+    // clang-format on
     std::lock_guard<utils::spinlock> guard(lock_);
     if (on_data_fun_) {
         std::invoke(on_data_fun_, pDepthMarketData);

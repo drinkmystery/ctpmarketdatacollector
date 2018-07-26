@@ -288,7 +288,8 @@ void CtpMarketDataCollector::process() {
         if (!ctp_md_data_.getData(tick_data)) {
             continue;
         }
-
+        // old market data ->it ,new marketdata -> tick_data;
+        // data_records_'s equal to subscribe inst size.
         auto it = data_records_.find(tick_data.instrument_id);
         if (it != data_records_.end()) {
             auto new_tick_mintues  = date::floor<std::chrono::minutes>(tick_data.last_tick_time);
@@ -296,14 +297,19 @@ void CtpMarketDataCollector::process() {
 
             if (new_tick_mintues != last_tick_minutes) {
                 // Try record one mintue data into Mongo.
+                //it->second.marketVol = tick_data.volume - it->second.volume; 
+                //it->second.volume   = tick_data.volume;
                 tryRecord(it->second);
             } else {
+                
+                tick_data.marketVol = tick_data.volume - it->second.volume + it->second.marketVol; 
                 // Memory updtae the highest and lowest inside one mintue.
                 tick_data.high = std::max(it->second.high, tick_data.high);
                 tick_data.low  = std::min(it->second.low, tick_data.low);
                 // Memory update open and volume inside one mintue.
                 tick_data.open   = it->second.open;
-                tick_data.volume = it->second.volume;
+                //tick_data.volume = it->second.volume;
+                
             }
             tick_data.last_record_time = it->second.last_record_time;
             tick_data.destination_id   = it->second.destination_id;
@@ -328,10 +334,15 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
    
     auto now_minutes         = date::floor<std::chrono::minutes>(std::chrono::system_clock::now());
     auto last_record_minutes = date::floor<std::chrono::minutes>(data.last_record_time);
-
+    auto now_t               = std::chrono::system_clock::to_time_t(now_minutes);
+    auto now_s               = ctime(&now_t);
+    auto last_record_minutes_t = std::chrono::system_clock::to_time_t(last_record_minutes);
+    auto last_record_minutes_s = ctime(&last_record_minutes_t);
+    std::chrono::hours one_hour(1);
     if (last_record_minutes == now_minutes) {
         return;
     }
+    DLOG("tryrecord ,last record time:{},now_minutes:{}", last_record_minutes_s, now_s);
 
     data.last_record_time = now_minutes;
     bool need_record      = false;
@@ -341,12 +352,13 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
     if (it != instrument_config_["modes"].end()) {
         // midnight is 00:00
         auto midnight       = date::floor<date::days>(now_minutes);
-        auto since_midnight = (now_minutes - midnight).count();
+        //  Since_midnight is not utc+8 count,so add 8 hour to make time zone match. 
+        auto since_midnight = (now_minutes - midnight + 8 * one_hour).count();
         for (const auto& duration : it.value()) {
             auto begin = utils::parse(duration["begin"]).count();
             auto end   = utils::parse(duration["end"]).count();
-            // ILOG("beginTime:{} endTime:{} begin:{},end:{},midNight:{}",duration["begin"].get<string>(),
-            // duration["end"].get<string>(),begin, end, since_midnight);
+            DLOG("beginTime:{} endTime:{} begin:{},end:{},midNight:{}",duration["begin"].get<string>(),
+            duration["end"].get<string>(),begin, end, since_midnight);
             if (begin < since_midnight && since_midnight <= end + 1) {
                 need_record = true;
                 break;
@@ -364,9 +376,8 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
     strftime(timeBuffer, sizeof(timeBuffer), "%H:%M:%S", &local_tm);
     data.action_day  = string(dateBuffer);
     data.action_time = string(timeBuffer);
-
+    
     if (need_record) {
-        std::chrono::hours one_hour(1);
         data.last_record_time = data.last_record_time + 8 * one_hour;  // utc+8 for mongoDb
         mongo_store_.getBuffer().push(data);
         DLOG("Collector try record one data!");

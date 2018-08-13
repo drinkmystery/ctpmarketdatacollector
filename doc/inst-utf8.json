@@ -1,15 +1,15 @@
 {
   "instruments": {
-    "rb1805": {
-      "destination": "rb0000",
+    "rb1810": {
+      "destination": "rb1810",
       "mode": "mode2"
     },
-    "ni1805": {
-      "destination": "ni0000",
+    "ni1810": {
+      "destination": "ni1810",
       "mode": "mode4"
     },
-    "al1801": {
-      "destination": "al0000",
+    "al1810": {
+      "destination": "al1810",
       "mode": "mode4"
     }
   },

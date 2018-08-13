@@ -73,7 +73,7 @@ void CtpMdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField* pRspUserLogin,
              pRspInfo->ErrorID,
              pRspInfo->ErrorMsg);
     } else if (pRspUserLogin && bIsLast) {
-        ILOG("Ctp Login success! RequestID:{},IsLast:{},ErrorId:{}", nRequestID, bIsLast,pRspInfo->ErrorID);
+        ILOG("Ctp Login success! RequestID:{},IsLast:{},ErrorId:{}", nRequestID, bIsLast, pRspInfo->ErrorID);
     }
 
     std::lock_guard<utils::spinlock> guard(lock_);
@@ -123,7 +123,8 @@ void CtpMdSpi::OnRspSubMarketData(CThostFtdcSpecificInstrumentField* pSpecificIn
         ILOG("Ctp SubMarketData success! RequestID:{},IsLast:{},InstrumentID:{},ErrodId:{}",
              nRequestID,
              bIsLast,
-             pSpecificInstrument->InstrumentID,pRspInfo->ErrorID);
+             pSpecificInstrument->InstrumentID,
+             pRspInfo->ErrorID);
     }
     std::lock_guard<utils::spinlock> guard(lock_);
     if (on_sub_fun_) {
@@ -190,7 +191,7 @@ void CtpMdSpi::OnRspUnSubForQuoteRsp(CThostFtdcSpecificInstrumentField* pSpecifi
 }
 
 void CtpMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField* pDepthMarketData) {
-    //ELOG("Ctp receive MarketData.");
+    // ELOG("Ctp receive MarketData.");
     if (pDepthMarketData) {
         DLOG("Ctp receive MarketData.");
     }
@@ -210,8 +211,38 @@ void CtpMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField* pDepthMarket
     // clang-format on
     std::lock_guard<utils::spinlock> guard(lock_);
     if (on_data_fun_) {
-        std::invoke(on_data_fun_, pDepthMarketData);
-        //ELOG("Ctp receive");
+        //Not tradeTime:vol is zero,maybe use time judge but if exist situation like :
+        //{
+        //"_id" : ObjectId("5b6e39885e6d8a0814002459"),
+        //"id" : "TF1812",
+        //"actionDate" : "2018-08-11",
+        //"actionTime" : "09:19:00",
+        //"exchange" : "",
+        //"high" : 98.03,
+        //"close" : 98.03,
+        //"open" : 98.03,
+        //"low" : 98.03,
+        //"volume" : 0,
+        //"marketVol" : 0,
+        //"highestPrice" : 1.79769313486232e+308,
+        //"lowestPrice" : 1.79769313486232e+308,
+        //"openPrice" : 1.79769313486232e+308,
+        //"preSettlementPrice" : 98.055,
+        //"preClosePrice" : 98.03,
+        //"Turnover" : 0.0,
+        //"PreOpenInterest" : 10933.0,
+        //"OpenInterest" : 10933.0,
+        //"UpperLimitPrice" : 99.23,
+        //"LowerLimitPrice" : 96.88,
+        //"mdTradingDay" : "20180813",
+        //"mdUpdateTime" : "18:11:16",
+        //"recordTime"
+        //: ISODate("2018-08-11T09:19:00.000Z")
+        //}
+        if (pDepthMarketData->Volume != 0) {
+        
+            std::invoke(on_data_fun_, pDepthMarketData);
+        }
     }
 }
 
@@ -227,12 +258,12 @@ void CtpMdSpi::OnRtnForQuoteRsp(CThostFtdcForQuoteRspField* pForQuoteRsp) {
 
 void CtpMdSpi::clearCallback() {
     std::lock_guard<utils::spinlock> guard(lock_);
-    on_connected_fun_ = {};
+    on_connected_fun_    = {};
     on_disconnected_fun_ = {};
-    on_login_fun_ = {};
-    on_error_fun_ = {};
-    on_sub_fun_ = {};
-    on_unsub_fun_ = {};
-    on_data_fun_ = {};
-    on_quote_fun_ = {};
+    on_login_fun_        = {};
+    on_error_fun_        = {};
+    on_sub_fun_          = {};
+    on_unsub_fun_        = {};
+    on_data_fun_         = {};
+    on_quote_fun_        = {};
 }

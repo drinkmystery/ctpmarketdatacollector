@@ -16,7 +16,7 @@ int32 CtpMarketData::init(const CtpConfig& ctp_config) {
     // 1. Create Ctp Api Instance.
     {
         auto mdapi = CThostFtdcMdApi::CreateFtdcMdApi(ctp_config.flow_path.c_str());
-        ELOG("flow_path:{}", ctp_config.flow_path.c_str());
+        //ELOG("flow_path:{}", ctp_config.flow_path.c_str());
         if (mdapi == nullptr) {
             ELOG("Ctp create api instance failed!");
             return -1;
@@ -72,11 +72,11 @@ int32 CtpMarketData::init(const CtpConfig& ctp_config) {
         req.UserID[sizeof(req.UserID) - 1] = '\n';
         ctp_config.password.copy(req.Password, sizeof(req.Password));
         req.Password[sizeof(req.Password) - 1] = '\n';
-        ELOG("BrokerId: {},UserId:{},PassWord:{},address:{}",
-             req.BrokerID,
-             req.UserID,
-             req.Password,
-             const_cast<char*>(ctp_config.md_address.c_str()));
+        //DLOG("BrokerId: {},UserId:{},PassWord:{},address:{}",
+        //     req.BrokerID,
+        //     req.UserID,
+        //     req.Password,
+        //     const_cast<char*>(ctp_config.md_address.c_str()));
         // Try Login
         auto call_result = ctpmdapi_->ReqUserLogin(&req, ++request_id_);
         if (call_result != 0) {
@@ -146,7 +146,9 @@ int32 CtpMarketData::subscribeMarketData(const std::vector<string>& instrument_i
         char_instrument_ids.emplace_back(const_cast<char*>(instrument_id.c_str()));
     }
     auto result =
-        ctpmdapi_->SubscribeMarketData(&(char_instrument_ids[0]), static_cast<int32>(char_instrument_ids.size()));
+        ctpmdapi_->SubscribeMarketData(&(char_instrument_ids[0]), static_cast<int32>(char_instrument_ids.size()));    
+    //auto result =
+    //    ctpmdapi_->SubscribeMarketData(nullptr,0);
 
     ELOG("subScribe MarketData  result:{},size:{}", result, static_cast<int32>(char_instrument_ids.size()));
     return result;

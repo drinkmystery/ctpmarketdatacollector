@@ -357,8 +357,8 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
         for (const auto& duration : it.value()) {
             auto begin = utils::parse(duration["begin"]).count();
             auto end   = utils::parse(duration["end"]).count();
-            ILOG("beginTime:{} endTime:{} begin:{},end:{},midNight:{}",duration["begin"].get<string>(),
-            duration["end"].get<string>(),begin, end, since_midnight);
+            //ILOG("beginTime:{} endTime:{} begin:{},end:{},midNight:{}",duration["begin"].get<string>(),
+            //duration["end"].get<string>(),begin, end, since_midnight);
             if (begin < since_midnight && since_midnight <= end) {
                 need_record = true;
                 break;

@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <set>
+#include <vector>
 
 #include <boost/lockfree/spsc_queue.hpp>
 
@@ -16,13 +17,14 @@ public:
     ~CtpMarketData() = default;
     int32 init(const CtpConfig& ctp_config);
     int32 subscribeMarketData(const string& instrument_ids);
-    bool getData(CThostFtdcDepthMarketDataField& data);
+    int32 subscribeMarketData(const std::vector<string>& instrument_ids);
+    bool getData(MarketData& data);
     bool empty();
     int32 stop();
     int32 reConnect(const CtpConfig& ctp_config);
 
 private:
-    using DataBuffer  = boost::lockfree::spsc_queue<CThostFtdcDepthMarketDataField>;
+    using DataBuffer  = boost::lockfree::spsc_queue<MarketData>;
     using CtpMdApiPtr = std::unique_ptr<CThostFtdcMdApi, std::function<void(CThostFtdcMdApi*)>>;
 
     int32            request_id_ = 0;

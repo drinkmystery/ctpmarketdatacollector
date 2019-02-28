@@ -19,6 +19,8 @@ extern "C" void signal_handler(int signal) {
     is_running = 0;
 }
 
+
+
 int32 main(int32 argc, char** argv) {
     is_running = 1;
     std::signal(SIGTERM, signal_handler);
@@ -66,7 +68,8 @@ int32 main(int32 argc, char** argv) {
                 ILOG("Collector reconnet success!");
             }
         }
-        std::this_thread::yield();
+		using namespace std::chrono_literals;
+        std::this_thread::sleep_for(10s);//
     }
     ILOG("Collector try stop");
     result = collector.stop();

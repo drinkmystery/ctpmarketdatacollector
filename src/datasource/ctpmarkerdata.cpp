@@ -16,20 +16,16 @@ int32 CtpMarketData::init(const CtpConfig& ctp_config) {
     // 1. Create Ctp Api Instance.
     {
         auto mdapi = CThostFtdcMdApi::CreateFtdcMdApi(ctp_config.flow_path.c_str());
+        //ELOG("flow_path:{}", ctp_config.flow_path.c_str());
         if (mdapi == nullptr) {
             ELOG("Ctp create api instance failed!");
             return -1;
         }
         ctpmdapi_ = {mdapi, [](CThostFtdcMdApi* mdapi) {
-                         // The Ctp's Document does not say how to release the api gracefully, maybe Release then Join,
-                         // NEED TEST! 2017/10/10 drinkmystery
                          if (mdapi != nullptr) {
                              mdapi->Release();
                          }
-                         // The actul result is cannot call Join after Release! 2017/10/11 drinkmystery
-                         // if (mdapi != nullptr) {
-                         //    mdapi->Join();
-                         // }
+                         ELOG("Release Mdapi");
                      }};
         ctpmdapi_->RegisterSpi(&ctpmdspi_);
         ILOG("Ctp create api instance success!");
@@ -69,12 +65,18 @@ int32 CtpMarketData::init(const CtpConfig& ctp_config) {
         });
 
         CThostFtdcReqUserLoginField req;
+        memset(&req, 0, sizeof(req));
         ctp_config.broker_id.copy(req.BrokerID, sizeof(req.BrokerID));
         req.BrokerID[sizeof(req.BrokerID) - 1] = '\n';
         ctp_config.user_id.copy(req.UserID, sizeof(req.UserID));
         req.UserID[sizeof(req.UserID) - 1] = '\n';
         ctp_config.password.copy(req.Password, sizeof(req.Password));
         req.Password[sizeof(req.Password) - 1] = '\n';
+        //DLOG("BrokerId: {},UserId:{},PassWord:{},address:{}",
+        //     req.BrokerID,
+        //     req.UserID,
+        //     req.Password,
+        //     const_cast<char*>(ctp_config.md_address.c_str()));
         // Try Login
         auto call_result = ctpmdapi_->ReqUserLogin(&req, ++request_id_);
         if (call_result != 0) {
@@ -89,7 +91,11 @@ int32 CtpMarketData::init(const CtpConfig& ctp_config) {
     // 4. Set Spi callback.
     {
         ctpmdspi_.clearCallback();
-        ctpmdspi_.setOnDataFun([this](CThostFtdcDepthMarketDataField* data) { buffer_.push(*data); });
+        ctpmdspi_.setOnDataFun([this](CThostFtdcDepthMarketDataField* data) {
+            if (data != nullptr) {
+                buffer_.push(MarketData(*data));
+            }
+        });
         ctpmdspi_.setOnSubFun([this](CThostFtdcSpecificInstrumentField* instrument, CThostFtdcRspInfoField* rsp) {
             if (instrument != nullptr && rsp != nullptr && rsp->ErrorID == 0) {
                 inst_ids_.insert(instrument->InstrumentID);
@@ -130,7 +136,25 @@ int32 CtpMarketData::subscribeMarketData(const string& instrument_ids) {
     return 0;
 }
 
-bool CtpMarketData::getData(CThostFtdcDepthMarketDataField& data) {
+int32 CtpMarketData::subscribeMarketData(const std::vector<string>& instrument_ids) {
+    if (!is_inited_) {
+        ELOG("CtpMarketData is not inited");
+        return -1;
+    }
+    std::vector<char*> char_instrument_ids;
+    for (const auto& instrument_id : instrument_ids) {
+        char_instrument_ids.emplace_back(const_cast<char*>(instrument_id.c_str()));
+    }
+    auto result =
+        ctpmdapi_->SubscribeMarketData(&(char_instrument_ids[0]), static_cast<int32>(char_instrument_ids.size()));    
+    //auto result =
+    //    ctpmdapi_->SubscribeMarketData(nullptr,0);
+
+    ELOG("subScribe MarketData  result:{},size:{}", result, static_cast<int32>(char_instrument_ids.size()));
+    return result;
+}
+
+bool CtpMarketData::getData(MarketData& data) {
     if (!is_inited_) {
         ELOG("CtpMarketData is not inited");
         return false;
@@ -153,6 +177,7 @@ int32 CtpMarketData::stop() {
 
 int32 CtpMarketData::reConnect(const CtpConfig& ctp_config) {
     auto result = stop();
+
     if (result != 0) {
         ELOG("Ctp reconnect failed while stoping pre instance! Result:{}", result);
         return -1;

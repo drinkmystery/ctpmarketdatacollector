@@ -7,8 +7,8 @@ namespace logger {
 
 inline int32 initLogger() {
     std::vector<spdlog::sink_ptr> sinks;
-    sinks.emplace_back(std::make_shared<spdlog::sinks::stdout_sink_st>());
-    sinks.emplace_back(std::make_shared<spdlog::sinks::daily_file_sink_st>("logs", 00, 00));
+    sinks.emplace_back(std::make_shared<spdlog::sinks::wincolor_stdout_sink_st>());
+    sinks.emplace_back(std::make_shared<spdlog::sinks::daily_file_sink_st>("logs/log", 00, 00));
     auto combined_logger = std::make_shared<spdlog::async_logger>("global", begin(sinks), end(sinks), 8192);
     combined_logger->flush_on(spdlog::level::err);
     combined_logger->set_level(spdlog::level::trace);

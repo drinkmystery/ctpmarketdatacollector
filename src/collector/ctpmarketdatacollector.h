@@ -11,6 +11,7 @@
 #include "utils/common.h"
 #include "datastore/mongostore.h"
 #include "datasource/ctpmarkerdata.h"
+#include "datasource/ctptdspi.h"
 
 class CtpMarketDataCollector {
 public:
@@ -44,6 +45,7 @@ private:
     MongoStore          mongo_store_;
     std::thread         inter_thread_;
     CtpMarketData       ctp_md_data_;
+    Ct
 
     DISALLOW_COPY_AND_ASSIGN(CtpMarketDataCollector);
 };

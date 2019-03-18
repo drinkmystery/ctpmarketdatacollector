@@ -9,7 +9,7 @@
 #include "utils/global.h"
 #include "utils/scopeguard.h"
 
-int32 CtpMarketData::init(const CtpConfig& ctp_config) {
+int32 CtpMarketData::init_md(const CtpConfig& ctp_config) {
     using namespace std::chrono_literals;
     is_inited_ = false;
 
@@ -116,6 +116,95 @@ int32 CtpMarketData::init(const CtpConfig& ctp_config) {
     is_inited_ = true;
     return 0;
 }
+
+
+
+int32 CtpMarketData::init_td(const ctpConfig& ctp_config) {
+    using namespace std::chrono_literals;
+    // 1.create td api instance
+    {
+        auto tdapi = CThostFtdcTraderApi::CreateFtdcTraderApi(ctp_config.td_flow_path_);
+        if (tdapi == nullptr) {
+            ELOG("CreateFtdcTraderApi instance failed");
+            return -1;
+        }
+        // unique_ptr->ctp's document release just call Release api, release 2018/07/11 JinnTao
+        ctpTdApi_ = {tdapi, [](CThostFtdcTraderApi* tdapi) {
+                         if (tdapi != nullptr) {
+                             tdapi->Release();
+                         }
+                         ELOG("Release tradeApi.");
+                     }};
+        ctpTdApi_->RegisterSpi(this);
+        ILOG("Td create instance success!");
+    }
+
+    // 2.connect to td Front
+    {
+        this->clearCallBack();
+
+        ctpTdApi_->RegisterFront(const_cast<char*>(ctp_config.tdAddress));
+        std::promise<bool> connect_result;
+        std::future<bool>  is_connected = connect_result.get_future();
+        on_connected_fun_               = [&connect_result] { connect_result.set_value(true); };
+        ctpTdApi_->Init();
+        auto wait_result = is_connected.wait_for(15s);
+        if (wait_result != std::future_status::ready || is_connected.get() != true) {
+            return -2;
+        }
+        ILOG("Td connect front success!");
+        ctpTdApi_->SubscribePrivateTopic(THOST_TERT_QUICK);  // Private QUICK recieve exchange send all msg after login
+        ctpTdApi_->SubscribePublicTopic(THOST_TERT_QUICK);   // Public QUICK recieve exchange send all msg after login
+    }
+
+    // 3.login to Td.
+    {
+        this->clearCallBack();
+        std::promise<bool> login_result;
+        std::future<bool>  is_logined = login_result.get_future();
+        on_login_fun_ = [&login_result](CThostFtdcRspUserLoginField* login, CThostFtdcRspInfoField* info) {
+            if (info->ErrorID == 0) {
+                login_result.set_value(true);
+            } else {
+                login_result.set_value(false);
+            }
+        };
+        CThostFtdcReqUserLoginField req;
+
+        memset(&req, 0, sizeof(req));
+        strcpy_s(req.BrokerID, sizeof(TThostFtdcBrokerIDType), ctp_config.brokerId);
+        strcpy_s(req.UserID, sizeof(TThostFtdcInvestorIDType), ctp_config.userId);
+        strcpy_s(req.Password, sizeof TThostFtdcPasswordType, ctp_config.passwd);
+        ctp_config_ = ctp_config;  // just no use deep copy
+        // Try login
+        auto req_login_result = ctpTdApi_->ReqUserLogin(&req, ++request_id_);
+        if (req_login_result != 0) {
+            ELOG("Td request login failed!");
+            return -3;
+        }
+        auto wait_result = is_logined.wait_for(5s);
+        if (wait_result != std::future_status::ready || is_logined.get() != true) {
+            ELOG("Td request login TimeOut!");
+            return -3;
+        }
+        ILOG("Td login success");
+    }
+
+    // 4.set callback
+    {
+        this->clearCallBack();
+        global::need_reconnect.store(false,
+                                     std::memory_order_release);  // current write/read cannot set this store back;
+        on_disconnected_fun_ = [](int32 reason) {
+            ELOG("Td disconnect,try reconnect! reason:{}", reason);
+            global::need_reconnect.store(true, std::memory_order_release);
+        };
+    }
+    return 0;
+}
+
+
+
 
 int32 CtpMarketData::subscribeMarketData(const string& instrument_ids) {
     if (!is_inited_) {

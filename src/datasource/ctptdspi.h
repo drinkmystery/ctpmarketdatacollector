@@ -55,6 +55,7 @@ public:
 
 
 private:
+    utils::spinlock lock_;
     using CtpTdApiPtr = std::unique_ptr<CThostFtdcTraderApi, std::function<void(CThostFtdcTraderApi*)>>;
     CtpTdApiPtr                                                                ctpTdApi_;
     int32                                                                      request_id_ = 0;
@@ -62,7 +63,10 @@ private:
     std::function<void(CThostFtdcRspUserLoginField*, CThostFtdcRspInfoField*)> on_login_fun_;
     std::function<void(int32)>                                                 on_disconnected_fun_;
     std::function<void()>                                                      on_started_fun_;
-
+    int32 front_id_;
+    int32 session_id_;
+    string trade_day_;
+    int32 order_ref_;
 };
 
 #endif  // _CTPMDSPI_H_

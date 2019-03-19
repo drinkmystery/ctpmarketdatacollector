@@ -1,5 +1,5 @@
-﻿#ifndef _CTPMDSPI_H_
-#define _CTPMDSPI_H_
+﻿#ifndef _CTPTDSPI_H_
+#define _CTPTDSPI_H_
 
 #include <functional>
 
@@ -8,11 +8,11 @@
 #include "utils/common.h"
 #include "utils/spinlock.h"
 
-class ctpTdSpi : public CThostFtdcTraderSpi {
+class CtpTdSpi : public CThostFtdcTraderSpi {
 public:
-    ctpTdSpi() = default;
+    CtpTdSpi() = default;
 
-    ~ctpTdSpi() = default;
+    ~CtpTdSpi() = default;
 
     // After making a succeed connection with the CTP server, the client should send the login request to the CTP
     // server.
@@ -40,7 +40,6 @@ public:
                                     int                        nRequestID,
                                     bool                       bIsLast);
 
-    
     void ReqQrySettlementInfoConfirm();
 
     virtual void OnRspQrySettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField* pSettlementInfoConfirm,
@@ -51,8 +50,13 @@ public:
     void ReqSettlementInfoConfirm();
 
     bool IsErrorRspInfo(CThostFtdcRspInfoField* pRspInfo);
+    void clearCallBack();
 
-
+    void setOnFrontConnected(std::function<void()>&& fun) { on_connected_fun_ = fun; }
+    void setOnFrontDisConnected(std::function<void(int32)>&& fun) { on_disconnected_fun_ = fun; }
+    void setOnLoginFun(std::function<void(CThostFtdcRspUserLoginField*, CThostFtdcRspInfoField*)> fun) {
+        on_login_fun_ = fun;
+    }
 
 private:
     utils::spinlock lock_;
@@ -63,10 +67,10 @@ private:
     std::function<void(CThostFtdcRspUserLoginField*, CThostFtdcRspInfoField*)> on_login_fun_;
     std::function<void(int32)>                                                 on_disconnected_fun_;
     std::function<void()>                                                      on_started_fun_;
-    int32 front_id_;
-    int32 session_id_;
-    string trade_day_;
-    int32 order_ref_;
+    int32                                                                      front_id_;
+    int32                                                                      session_id_;
+    string                                                                     trade_day_;
+    int32                                                                      order_ref_;
 };
 
-#endif  // _CTPMDSPI_H_
+#endif  // _CTPTDSPI_H_

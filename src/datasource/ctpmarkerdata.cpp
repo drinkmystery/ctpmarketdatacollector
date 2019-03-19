@@ -15,7 +15,7 @@ int32 CtpMarketData::init_md(const CtpConfig& ctp_config) {
 
     // 1. Create Ctp Api Instance.
     {
-        auto mdapi = CThostFtdcMdApi::CreateFtdcMdApi(ctp_config.flow_path.c_str());
+        auto mdapi = CThostFtdcMdApi::CreateFtdcMdApi(ctp_config.md_flow_path.c_str());
         //ELOG("flow_path:{}", ctp_config.flow_path.c_str());
         if (mdapi == nullptr) {
             ELOG("Ctp create api instance failed!");
@@ -119,47 +119,47 @@ int32 CtpMarketData::init_md(const CtpConfig& ctp_config) {
 
 
 
-int32 CtpMarketData::init_td(const ctpConfig& ctp_config) {
+int32 CtpMarketData::init_td(const CtpConfig& ctp_config) {
     using namespace std::chrono_literals;
     // 1.create td api instance
     {
-        auto tdapi = CThostFtdcTraderApi::CreateFtdcTraderApi(ctp_config.td_flow_path_);
+        auto tdapi = CThostFtdcTraderApi::CreateFtdcTraderApi(ctp_config.td_flow_path.c_str());
         if (tdapi == nullptr) {
             ELOG("CreateFtdcTraderApi instance failed");
             return -1;
         }
         // unique_ptr->ctp's document release just call Release api, release 2018/07/11 JinnTao
-        ctpTdApi_ = {tdapi, [](CThostFtdcTraderApi* tdapi) {
+        ctptdapi_ = {tdapi, [](CThostFtdcTraderApi* tdapi) {
                          if (tdapi != nullptr) {
                              tdapi->Release();
                          }
                          ELOG("Release tradeApi.");
                      }};
-        ctpTdApi_->RegisterSpi(this);
+        ctptdapi_->RegisterSpi(&ctptdspi_);
         ILOG("Td create instance success!");
     }
 
     // 2.connect to td Front
     {
-        this->clearCallBack();
+        ctptdspi_.clearCallBack();
 
-        ctpTdApi_->RegisterFront(const_cast<char*>(ctp_config.tdAddress));
+        ctptdapi_->RegisterFront(const_cast<char*>(ctp_config.td_address.c_str()));
         std::promise<bool> connect_result;
         std::future<bool>  is_connected = connect_result.get_future();
         on_connected_fun_               = [&connect_result] { connect_result.set_value(true); };
-        ctpTdApi_->Init();
+        ctptdapi_->Init();
         auto wait_result = is_connected.wait_for(15s);
         if (wait_result != std::future_status::ready || is_connected.get() != true) {
             return -2;
         }
         ILOG("Td connect front success!");
-        ctpTdApi_->SubscribePrivateTopic(THOST_TERT_QUICK);  // Private QUICK recieve exchange send all msg after login
-        ctpTdApi_->SubscribePublicTopic(THOST_TERT_QUICK);   // Public QUICK recieve exchange send all msg after login
+        ctptdapi_->SubscribePrivateTopic(THOST_TERT_QUICK);  // Private QUICK recieve exchange send all msg after login
+        ctptdapi_->SubscribePublicTopic(THOST_TERT_QUICK);   // Public QUICK recieve exchange send all msg after login
     }
 
     // 3.login to Td.
     {
-        this->clearCallBack();
+        ctptdspi_.clearCallBack();
         std::promise<bool> login_result;
         std::future<bool>  is_logined = login_result.get_future();
         on_login_fun_ = [&login_result](CThostFtdcRspUserLoginField* login, CThostFtdcRspInfoField* info) {
@@ -172,12 +172,12 @@ int32 CtpMarketData::init_td(const ctpConfig& ctp_config) {
         CThostFtdcReqUserLoginField req;
 
         memset(&req, 0, sizeof(req));
-        strcpy_s(req.BrokerID, sizeof(TThostFtdcBrokerIDType), ctp_config.brokerId);
-        strcpy_s(req.UserID, sizeof(TThostFtdcInvestorIDType), ctp_config.userId);
-        strcpy_s(req.Password, sizeof TThostFtdcPasswordType, ctp_config.passwd);
-        ctp_config_ = ctp_config;  // just no use deep copy
+        strcpy_s(req.BrokerID, sizeof(TThostFtdcBrokerIDType), ctp_config.broker_id.c_str());
+        strcpy_s(req.UserID, sizeof(TThostFtdcInvestorIDType), ctp_config.user_id.c_str());
+        strcpy_s(req.Password, sizeof TThostFtdcPasswordType, ctp_config.password.c_str());
+
         // Try login
-        auto req_login_result = ctpTdApi_->ReqUserLogin(&req, ++request_id_);
+        auto req_login_result = ctptdapi_->ReqUserLogin(&req, ++request_id_);
         if (req_login_result != 0) {
             ELOG("Td request login failed!");
             return -3;
@@ -192,7 +192,7 @@ int32 CtpMarketData::init_td(const ctpConfig& ctp_config) {
 
     // 4.set callback
     {
-        this->clearCallBack();
+        ctptdspi_.clearCallBack();
         global::need_reconnect.store(false,
                                      std::memory_order_release);  // current write/read cannot set this store back;
         on_disconnected_fun_ = [](int32 reason) {

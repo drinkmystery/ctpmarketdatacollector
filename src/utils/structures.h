@@ -12,7 +12,9 @@ struct CtpConfig {
     string user_id;
     string password;
     string md_address;
-    string flow_path;
+    string td_address;
+    string td_flow_path;
+    string md_flow_path;
     string instrument_ids;
 };
 

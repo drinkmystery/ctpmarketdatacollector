@@ -1,34 +1,28 @@
-﻿#include "ctptdspi.h"
+﻿#include "CtpTdSpi.h"
 
 #include "utils/logger.h"
 
-void ctpTdSpi::OnFrontConnected() {
+void CtpTdSpi::OnFrontConnected() {}
 
-
-}
-
-void ctpTdSpi::OnFrontDisconnected(int nReason) {
-
-}
+void CtpTdSpi::OnFrontDisconnected(int nReason) {}
 
 void ctpTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField* pRspUserLogin,
                               CThostFtdcRspInfoField*      pRspInfo,
                               int                          nRequestID,
                               bool                         bIsLast) {
- 
+
     if (pRspInfo && pRspInfo->ErrorID != 0) {
         ELOG("Ctp Login failed! RequestID:{},IsLast:{},ErrorID:{},ErrorMsg:{}",
              nRequestID,
              bIsLast,
              pRspInfo->ErrorID,
              pRspInfo->ErrorMsg);
-    }
-    else if (pRspUserLogin && bIsLast) {
+    } else if (pRspUserLogin && bIsLast) {
         ILOG("Ctp Login success! RequestID:{},IsLast:{},ErrorId:{}", nRequestID, bIsLast, pRspInfo->ErrorID);
-        front_id_        = pRspUserLogin->FrontID;
-        session_id_      = pRspUserLogin->SessionID;
-        order_ref_   = atoi(pRspUserLogin->MaxOrderRef);
-        trade_day_        = string(pRspUserLogin->TradingDay);
+        front_id_   = pRspUserLogin->FrontID;
+        session_id_ = pRspUserLogin->SessionID;
+        order_ref_  = atoi(pRspUserLogin->MaxOrderRef);
+        trade_day_  = string(pRspUserLogin->TradingDay);
         order_ref_++;
     }
 
@@ -38,7 +32,7 @@ void ctpTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField* pRspUserLogin,
     }
 }
 
-void ctpTdSpi::ReqQrySettlementInfoConfirm() {
+void CtpTdSpi::ReqQrySettlementInfoConfirm() {
     std::lock_guard<utils::spinlock>        guard(lock_);
     CThostFtdcQrySettlementInfoConfirmField req;
     memset(&req, 0, sizeof(req));
@@ -48,10 +42,10 @@ void ctpTdSpi::ReqQrySettlementInfoConfirm() {
     ILOG("ReqSettlementInforConrim,Result:{},requestId:{}.", iResult, request_id_);
 }
 
-void ctpTdSpi::OnRspQrySettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField* pSettlementInfoConfirm,
-                                               CThostFtdcRspInfoField*               pRspInfo,
-                                               int                                   nRequestID,
-                                               bool                                  bIsLast) {
+void CtpTdSpi::OnRspQrySettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField* pSettlementInfoConfirm,
+                                             CThostFtdcRspInfoField*               pRspInfo,
+                                             int                                   nRequestID,
+                                             bool                                  bIsLast) {
     if (!IsErrorRspInfo(pRspInfo) && pSettlementInfoConfirm) {
         ILOG("OnRspSettlementInfoConfirm: Success!ConfirmDate:{},ConfirmTime:{},settlementID:{},nRequestID:{}.",
              pSettlementInfoConfirm->ConfirmDate,
@@ -68,7 +62,7 @@ void ctpTdSpi::OnRspQrySettlementInfoConfirm(CThostFtdcSettlementInfoConfirmFiel
     }
 }
 
-void ctpTdSpi::ReqSettlementInfoConfirm() {
+void CtpTdSpi::ReqSettlementInfoConfirm() {
     std::lock_guard<std::mutex>          guard(mut_);
     CThostFtdcSettlementInfoConfirmField req;
     memset(&req, 0, sizeof(req));
@@ -78,10 +72,10 @@ void ctpTdSpi::ReqSettlementInfoConfirm() {
     ILOG("First ReqSettlementInforConrim,Result:{}.request_id:{}.", iResult, request_id_);
 }
 
-void ctpTdSpi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField* pSettlementInfoConfirm,
-                                            CThostFtdcRspInfoField*               pRspInfo,
-                                            int                                   nRequestID,
-                                            bool                                  bIsLast) {
+void CtpTdSpi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField* pSettlementInfoConfirm,
+                                          CThostFtdcRspInfoField*               pRspInfo,
+                                          int                                   nRequestID,
+                                          bool                                  bIsLast) {
 
     if (!IsErrorRspInfo(pRspInfo) && pSettlementInfoConfirm) {
 
@@ -96,7 +90,7 @@ void ctpTdSpi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField* 
     }
 }
 
-void ctpTdSpi::ReqQryInstrument_all() {
+void CtpTdSpi::ReqQryInstrument_all() {
     std::lock_guard<std::mutex>  guard(mut_);
     CThostFtdcQryInstrumentField req;
     memset(&req, 0, sizeof(req));
@@ -111,10 +105,10 @@ void ctpTdSpi::ReqQryInstrument_all() {
     }
 }
 
-void ctpTdSpi::OnRspQryInstrument(CThostFtdcInstrumentField* pInstrument,
-                                    CThostFtdcRspInfoField*    pRspInfo,
-                                    int                        nRequestID,
-                                    bool                       bIsLast) {
+void CtpTdSpi::OnRspQryInstrument(CThostFtdcInstrumentField* pInstrument,
+                                  CThostFtdcRspInfoField*    pRspInfo,
+                                  int                        nRequestID,
+                                  bool                       bIsLast) {
 
     if (!IsErrorRspInfo(pRspInfo) && pInstrument) {
         if (m_first_inquiry_Instrument == true) {
@@ -131,6 +125,8 @@ void ctpTdSpi::OnRspQryInstrument(CThostFtdcInstrumentField* pInstrument,
         ReqQryOrder();
     }
 }
-void ctpTdSpi::ReqSettlementInfoConfirm() {}
+void CtpTdSpi::ReqSettlementInfoConfirm() {}
 
-bool ctpTdSpi::IsErrorRspInfo(CThostFtdcRspInfoField* pRspInfo) {}
+bool CtpTdSpi::IsErrorRspInfo(CThostFtdcRspInfoField* pRspInfo) {}
+
+void CtpTdSpi::clearCallBack() {}

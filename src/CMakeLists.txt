@@ -14,7 +14,8 @@ target_link_libraries(ctp-marketdata-collector
                       ${MONGOC_STATIC_LIBRARIES}
                       libmongocxx
                       libbsoncxx
-                      thostmduserapi)
+                      thostmduserapi
+                      thosttraderapi)
 target_compile_definitions(ctp-marketdata-collector
                            PRIVATE ${MONGOC_STATIC_DEFINITIONS}
                            PRIVATE MONGOCXX_STATIC

@@ -15,7 +15,7 @@
 
 class CtpMarketDataCollector {
 public:
-    CtpMarketDataCollector() = default;
+    CtpMarketDataCollector();
     ~CtpMarketDataCollector();
     int32 loadConfig(int32 argc, char** argv);
     int32 loadJson(const string& json_file);
@@ -45,7 +45,7 @@ private:
     MongoStore          mongo_store_;
     std::thread         inter_thread_;
     CtpMarketData       ctp_md_data_;
-    Ct
+
 
     DISALLOW_COPY_AND_ASSIGN(CtpMarketDataCollector);
 };

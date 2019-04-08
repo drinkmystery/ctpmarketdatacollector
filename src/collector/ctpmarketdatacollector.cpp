@@ -64,7 +64,8 @@ int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
         ("ctp.userID", po::value<string>()->required())
         ("ctp.password", po::value<string>()->required())
         ("ctp.mdAddress", po::value<string>()->required())
-        ("ctp.flowPath", po::value<string>()->required())
+        ("ctp.mdPath", po::value<string>()->required())
+        ("ctp.tdPath", po::value<string>()->required())
         ("mongo.address", po::value<string>()->required())
         ("mongo.db", po::value<string>()->required());
     // clang-format on
@@ -92,7 +93,8 @@ int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
         ctp_config_.user_id    = app_options["ctp.userID"].as<string>();
         ctp_config_.password   = app_options["ctp.password"].as<string>();
         ctp_config_.md_address = app_options["ctp.mdAddress"].as<string>();
-        ctp_config_.flow_path  = app_options["ctp.flowPath"].as<string>();
+        ctp_config_.md_flow_path  = app_options["ctp.mdPath "].as<string>();
+        ctp_config_.td_flow_path  = app_options["ctp.tdPath "].as<string>();
         mongo_config_.address  = app_options["mongo.address"].as<string>();
         mongo_config_.db       = app_options["mongo.db"].as<string>();
     } catch (std::exception& e) {
@@ -159,12 +161,12 @@ int32 CtpMarketDataCollector::createPath() {
     namespace fs = boost::filesystem;
 
     try {
-        auto flow_path = fs::path(ctp_config_.flow_path);
+        auto flow_path = fs::path(ctp_config_.td_flow_path);
         if (!fs::exists(flow_path)) {
             if (fs::create_directory(flow_path)) {
                 return 0;
             } else {
-                ELOG("Flow path create failed!");
+                ELOG("{} path create failed!", ctp_config_.td_flow_path);
                 return -1;
             }
         }
@@ -172,6 +174,21 @@ int32 CtpMarketDataCollector::createPath() {
             ELOG("Flow path is not a directory!");
             return -2;
         }
+
+        flow_path = fs::path(ctp_config_.md_flow_path);
+        if (!fs::exists(flow_path)) {
+            if (fs::create_directory(flow_path)) {
+                return 0;
+            } else {
+                ELOG("{} path create failed!", ctp_config_.md_flow_path);
+                return -1;
+            }
+        }
+        if (!fs::is_directory(flow_path)) {
+            ELOG("Flow path is not a directory!");
+            return -2;
+        }
+
     } catch (std::exception& e) {
         ELOG("Create path failed!{}", e.what());
         return -3;
@@ -199,11 +216,17 @@ int32 CtpMarketDataCollector::init() {
             return init_result;
         }
 
-        init_result = ctp_md_data_.init(ctp_config_);
+        init_result = ctp_md_data_.init_td(ctp_config_);
         if (init_result != 0) {
-            ELOG("MarketData init failed! Init result:{}", init_result);
+            ELOG("TradeIData init failed! Init result:{}", init_result);
             return init_result;
         }
+
+        //init_result = ctp_md_data_.init_md(ctp_config_);
+        //if (init_result != 0) {
+        //    ELOG("MarketData init failed! Init result:{}", init_result);
+        //    return init_result;
+        //}
     } catch (std::exception& e) {
         ELOG("Init failed!{}", e.what());
         return -2;
@@ -228,7 +251,7 @@ int32 CtpMarketDataCollector::start() {
     //for (auto iter : instrument_ids_) {
     //    ELOG("Instrument: {}", iter);
     //}
-    ctp_md_data_.subscribeMarketData(instrument_ids_);
+    //ctp_md_data_.subscribeMarketData(instrument_ids_);
     return 0;
 }
 

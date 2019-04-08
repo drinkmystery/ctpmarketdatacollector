@@ -8,6 +8,9 @@
 #include "utils/common.h"
 #include "utils/spinlock.h"
 
+#include <vector>
+#include <string>
+
 class CtpTdSpi : public CThostFtdcTraderSpi {
 public:
     CtpTdSpi() = default;
@@ -39,6 +42,8 @@ public:
                                     CThostFtdcRspInfoField*    pRspInfo,
                                     int                        nRequestID,
                                     bool                       bIsLast);
+    ///错误应答
+    virtual void OnRspError(CThostFtdcRspInfoField* pRspInfo, int32 nRequestID, bool bIsLast);
 
     void ReqQrySettlementInfoConfirm();
 
@@ -52,25 +57,35 @@ public:
     bool IsErrorRspInfo(CThostFtdcRspInfoField* pRspInfo);
     void clearCallBack();
 
-    void setOnFrontConnected(std::function<void()>&& fun) { on_connected_fun_ = fun; }
-    void setOnFrontDisConnected(std::function<void(int32)>&& fun) { on_disconnected_fun_ = fun; }
-    void setOnLoginFun(std::function<void(CThostFtdcRspUserLoginField*, CThostFtdcRspInfoField*)> fun) {
-        on_login_fun_ = fun;
-    }
+    void setOnFrontConnected(std::function<void()>&& fun);
+    void setOnFrontDisConnected(std::function<void(int32)>&& fun);
+    void setOnLoginFun(std::function<void(CThostFtdcRspUserLoginField*, CThostFtdcRspInfoField*)> fun);
+    void setOnErrorFun(std::function<void(CThostFtdcRspInfoField*)> fun);
+    void ReqQryInstrument_all();
+    
+    bool IsFlowControl(int iResult);
 
 private:
     utils::spinlock lock_;
     using CtpTdApiPtr = std::unique_ptr<CThostFtdcTraderApi, std::function<void(CThostFtdcTraderApi*)>>;
     CtpTdApiPtr                                                                ctpTdApi_;
     int32                                                                      request_id_ = 0;
+    
     std::function<void()>                                                      on_connected_fun_;
     std::function<void(CThostFtdcRspUserLoginField*, CThostFtdcRspInfoField*)> on_login_fun_;
     std::function<void(int32)>                                                 on_disconnected_fun_;
+    std::function<void(CThostFtdcRspInfoField*)>                               on_error_fun_;
     std::function<void()>                                                      on_started_fun_;
+    std::function<void(std::vector<std::string>)>                              on_instrument_ids_;
+
     int32                                                                      front_id_;
     int32                                                                      session_id_;
+    string                                                                     broker_id_;
+    string                                                                     inverstor_id_;
     string                                                                     trade_day_;
     int32                                                                      order_ref_;
+
+    std::vector<std::string> instrument_ids_;
 };
 
 #endif  // _CTPTDSPI_H_

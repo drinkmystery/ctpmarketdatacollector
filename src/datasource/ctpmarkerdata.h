@@ -42,7 +42,7 @@ private:
     CtpTdSpi    ctptdspi_;
     CtpTdApiPtr ctptdapi_;
     // 
-    std::vector<string>& instrument_id_;
+    std::vector<string> instrument_id_;
 
     DISALLOW_COPY_AND_ASSIGN(CtpMarketData);
 };

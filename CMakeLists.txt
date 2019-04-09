@@ -7,7 +7,7 @@ find_package(Boost REQUIRED COMPONENTS
 message(${Boost_INCLUDE_DIRS})
 message(${Boost_LIBRARIES})
 
-# find_package(libmongoc-static-1.0 REQUIRED)
+find_package(libmongoc-static-1.0 REQUIRED)
 # message(${MONGOC_STATIC_INCLUDE_DIRS})
 # message(${MONGOC_STATIC_LIBRARIES})
 # message(${MONGOC_STATIC_DEFINITIONS})
@@ -17,7 +17,7 @@ message(${LIBMONGOCXX_INCLUDE_DIRS})
 message(${LIBMONGOCXX_LIBRARY_DIRS})
 message(${LIBMONGOCXX_LIBRARIES})
 
-# find_package(libbsoncxx REQUIRED)
+find_package(libbsoncxx REQUIRED)
 # message(${LIBBSONCXX_INCLUDE_DIRS})
 # message(${LIBBSONCXX_LIBRARY_DIRS})
 # message(${LIBBSONCXX_LIBRARIES})

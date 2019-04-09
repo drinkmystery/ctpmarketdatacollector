@@ -260,6 +260,7 @@ int32 CtpMarketData::subscribeMarketData() {
     ILOG("Obtain Inst list success");
 
     this->subscribeMarketData(instrument_ids);
+    return 0;
 }
 bool  CtpMarketData::getData(MarketData& data) {
     if (!is_inited_) {

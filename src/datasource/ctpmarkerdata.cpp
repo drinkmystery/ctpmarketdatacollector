@@ -144,7 +144,7 @@ int32 CtpMarketData::init_td(const CtpConfig& ctp_config) {
         ctptdapi_->RegisterFront(const_cast<char*>(ctp_config.td_address.c_str()));
         std::promise<bool> connect_result;
         std::future<bool>  is_connected = connect_result.get_future();
-        ctptdspi_.setOnFrontConnected([&connect_result] { connect_result.set_value(true);});
+        ctptdspi_.setOnFrontConnected([&connect_result] { connect_result.set_value(true); });
         ctptdapi_->Init();
         auto wait_result = is_connected.wait_for(15s);
         if (wait_result != std::future_status::ready || is_connected.get() != true) {
@@ -197,7 +197,6 @@ int32 CtpMarketData::init_td(const CtpConfig& ctp_config) {
             ELOG("Td disconnect,try reconnect! reason:{}", reason);
             global::need_reconnect.store(true, std::memory_order_release);
         });
-
     }
     return 0;
 }
@@ -238,8 +237,31 @@ int32 CtpMarketData::subscribeMarketData(const std::vector<string>& instrument_i
     ELOG("subScribe MarketData  result:{},size:{}", result, static_cast<int32>(char_instrument_ids.size()));
     return result;
 }
+int32 CtpMarketData::subscribeMarketData() {
+    using namespace std::chrono_literals;
+    if (!is_inited_) {
+        ELOG("CtpMarketData is not inited");
+        return -1;
+    }
+    std::vector<std::string> instrument_ids;
+    std::promise<bool>       inst_result;
+    std::future<bool>        is_obtain_inst = inst_result.get_future();
 
-bool CtpMarketData::getData(MarketData& data) {
+    ctptdspi_.setOnInstrumentIds([&inst_result, &instrument_ids](std::vector<std::string> inst_list) {
+        inst_result.set_value(true);
+        // copy assign
+        instrument_ids = inst_list;
+    });
+
+    auto wait_result = is_obtain_inst.wait_for(60s);
+    if (wait_result != std::future_status::ready || is_obtain_inst.get() != true) {
+        return -2;
+    }
+    ILOG("Obtain Inst list success");
+
+    this->subscribeMarketData(instrument_ids);
+}
+bool  CtpMarketData::getData(MarketData& data) {
     if (!is_inited_) {
         ELOG("CtpMarketData is not inited");
         return false;

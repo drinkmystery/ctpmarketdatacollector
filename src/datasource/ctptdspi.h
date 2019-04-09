@@ -61,6 +61,7 @@ public:
     void setOnFrontDisConnected(std::function<void(int32)>&& fun);
     void setOnLoginFun(std::function<void(CThostFtdcRspUserLoginField*, CThostFtdcRspInfoField*)> fun);
     void setOnErrorFun(std::function<void(CThostFtdcRspInfoField*)> fun);
+    void setOnInstrumentIds(std::function<void(std::vector<std::string>)>);
     void ReqQryInstrument_all();
     
     bool IsFlowControl(int iResult);

@@ -15,7 +15,7 @@
 
 class CtpMarketDataCollector {
 public:
-    CtpMarketDataCollector();
+    CtpMarketDataCollector() = default;
     ~CtpMarketDataCollector();
     int32 loadConfig(int32 argc, char** argv);
     int32 loadJson(const string& json_file);

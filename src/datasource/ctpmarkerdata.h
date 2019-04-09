@@ -20,6 +20,7 @@ public:
     int32 init_md(const CtpConfig& ctp_config);
     int32 subscribeMarketData(const string& instrument_ids);
     int32 subscribeMarketData(const std::vector<string>& instrument_ids);
+    int32 subscribeMarketData();
     bool  getData(MarketData& data);
     bool  empty();
     int32 stop();

@@ -19,7 +19,7 @@ void CtpTdSpi::OnFrontDisconnected(int nReason) {
         std::invoke(on_disconnected_fun_, nReason);
     }
 }
-//after login, request query settlement and query insturment meg
+// after login, request query settlement and query insturment meg
 void CtpTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField* pRspUserLogin,
                               CThostFtdcRspInfoField*      pRspInfo,
                               int                          nRequestID,
@@ -40,13 +40,13 @@ void CtpTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField* pRspUserLogin,
         trade_day_    = string(pRspUserLogin->TradingDay);
         order_ref_++;
 
-        this->ReqQrySettlementInfoConfirm();
+        //this->ReqQrySettlementInfoConfirm();
     }
 
-    // std::lock_guard<utils::spinlock> guard(lock_);
-    // if (on_login_fun_) {
-    //    std::invoke(on_login_fun_, pRspUserLogin, pRspInfo);
-    //}
+     std::lock_guard<utils::spinlock> guard(lock_);
+     if (on_login_fun_) {
+        std::invoke(on_login_fun_, pRspUserLogin, pRspInfo);
+    }
 }
 
 void CtpTdSpi::ReqQrySettlementInfoConfirm() {
@@ -145,14 +145,15 @@ void CtpTdSpi::OnRspQryInstrument(CThostFtdcInstrumentField* pInstrument,
         //// save all instrument to Inst message map
         auto instField = std::make_shared<CThostFtdcInstrumentField>(*pInstrument);
         //// maybe save all Insturment msg is better?but save to csv or save to database?
-        //m_InstMeassageMap->insert(
+        // m_InstMeassageMap->insert(
         //    pair<string, std::shared_ptr<CThostFtdcInstrumentField>>(instField->InstrumentID, instField));
         instrument_ids_.emplace_back(instField->InstrumentID);
         ILOG("InstrumentID:{}.", instField->InstrumentID);
-        //std::cout >> instField->InstrumentID >> std::endl;
+        // std::cout >> instField->InstrumentID >> std::endl;
     }
     if (bIsLast) {
         ILOG("OnRspQryInstrument,bIsLast:{},nRequestID:{}.", bIsLast, nRequestID);
+        std::invoke(on_instrument_ids_,instrument_ids_);
     }
 }
 
@@ -203,4 +204,10 @@ void CtpTdSpi::setOnLoginFun(std::function<void(CThostFtdcRspUserLoginField*, CT
 void CtpTdSpi::setOnErrorFun(std::function<void(CThostFtdcRspInfoField*)> fun) {
     std::lock_guard<utils::spinlock> guard(lock_);
     on_error_fun_ = fun;
+}
+
+void CtpTdSpi::setOnInstrumentIds(std::function<void(std::vector<std::string> )> fun) 
+{
+    std::lock_guard<utils::spinlock> guard(lock_);
+    on_instrument_ids_ = fun;
 }

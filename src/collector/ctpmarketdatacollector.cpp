@@ -89,14 +89,14 @@ int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
     }
 
     try {
-        ctp_config_.broker_id  = app_options["ctp.brokerID"].as<string>();
-        ctp_config_.user_id    = app_options["ctp.userID"].as<string>();
-        ctp_config_.password   = app_options["ctp.password"].as<string>();
-        ctp_config_.md_address = app_options["ctp.mdAddress"].as<string>();
-        ctp_config_.md_flow_path  = app_options["ctp.mdPath "].as<string>();
-        ctp_config_.td_flow_path  = app_options["ctp.tdPath "].as<string>();
-        mongo_config_.address  = app_options["mongo.address"].as<string>();
-        mongo_config_.db       = app_options["mongo.db"].as<string>();
+        ctp_config_.broker_id    = app_options["ctp.brokerID"].as<string>();
+        ctp_config_.user_id      = app_options["ctp.userID"].as<string>();
+        ctp_config_.password     = app_options["ctp.password"].as<string>();
+        ctp_config_.md_address   = app_options["ctp.mdAddress"].as<string>();
+        ctp_config_.md_flow_path = app_options["ctp.mdPath "].as<string>();
+        ctp_config_.td_flow_path = app_options["ctp.tdPath "].as<string>();
+        mongo_config_.address    = app_options["mongo.address"].as<string>();
+        mongo_config_.db         = app_options["mongo.db"].as<string>();
     } catch (std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
         return -7;
@@ -222,11 +222,11 @@ int32 CtpMarketDataCollector::init() {
             return init_result;
         }
 
-        //init_result = ctp_md_data_.init_md(ctp_config_);
-        //if (init_result != 0) {
-        //    ELOG("MarketData init failed! Init result:{}", init_result);
-        //    return init_result;
-        //}
+        init_result = ctp_md_data_.init_md(ctp_config_);
+        if (init_result != 0) {
+            ELOG("MarketData init failed! Init result:{}", init_result);
+            return init_result;
+        }
     } catch (std::exception& e) {
         ELOG("Init failed!{}", e.what());
         return -2;
@@ -248,10 +248,14 @@ int32 CtpMarketDataCollector::start() {
     is_running_.store(true, std::memory_order_release);
     inter_thread_ = std::thread(&CtpMarketDataCollector::loop, this);
     // ctp_md_data_ is started in CtpMarketDataCollector::init by ctp_md_data_.init
-    //for (auto iter : instrument_ids_) {
+    // for (auto iter : instrument_ids_) {
     //    ELOG("Instrument: {}", iter);
     //}
+
     //ctp_md_data_.subscribeMarketData(instrument_ids_);
+    ctp_md_data_.subscribeMarketData();
+
+
     return 0;
 }
 
@@ -320,19 +324,18 @@ void CtpMarketDataCollector::process() {
 
             if (new_tick_mintues != last_tick_minutes) {
                 // Try record one mintue data into Mongo.
-                //it->second.marketVol = tick_data.volume - it->second.volume; 
-                //it->second.volume   = tick_data.volume;
+                // it->second.marketVol = tick_data.volume - it->second.volume;
+                // it->second.volume   = tick_data.volume;
                 tryRecord(it->second);
             } else {
-                
-                tick_data.marketVol = tick_data.volume - it->second.volume + it->second.marketVol; 
+
+                tick_data.marketVol = tick_data.volume - it->second.volume + it->second.marketVol;
                 // Memory updtae the highest and lowest inside one mintue.
                 tick_data.high = std::max(it->second.high, tick_data.high);
                 tick_data.low  = std::min(it->second.low, tick_data.low);
                 // Memory update open and volume inside one mintue.
-                tick_data.open   = it->second.open;
-                //tick_data.volume = it->second.volume;
-                
+                tick_data.open = it->second.open;
+                // tick_data.volume = it->second.volume;
             }
             tick_data.last_record_time = it->second.last_record_time;
             tick_data.destination_id   = it->second.destination_id;
@@ -354,13 +357,13 @@ void CtpMarketDataCollector::process() {
 }
 
 void CtpMarketDataCollector::tryRecord(MarketData& data) {
-   
-    auto now_minutes         = date::floor<std::chrono::minutes>(std::chrono::system_clock::now());
-    auto last_record_minutes = date::floor<std::chrono::minutes>(data.last_record_time);
-    auto now_t               = std::chrono::system_clock::to_time_t(now_minutes);
-    auto now_s               = ctime(&now_t);
-    auto last_record_minutes_t = std::chrono::system_clock::to_time_t(last_record_minutes);
-    auto last_record_minutes_s = ctime(&last_record_minutes_t);
+
+    auto               now_minutes           = date::floor<std::chrono::minutes>(std::chrono::system_clock::now());
+    auto               last_record_minutes   = date::floor<std::chrono::minutes>(data.last_record_time);
+    auto               now_t                 = std::chrono::system_clock::to_time_t(now_minutes);
+    auto               now_s                 = ctime(&now_t);
+    auto               last_record_minutes_t = std::chrono::system_clock::to_time_t(last_record_minutes);
+    auto               last_record_minutes_s = ctime(&last_record_minutes_t);
     std::chrono::hours one_hour(1);
     if (last_record_minutes == now_minutes) {
         return;
@@ -374,14 +377,14 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
 
     if (it != instrument_config_["modes"].end()) {
         // midnight is 00:00
-        auto midnight       = date::floor<date::days>(now_minutes);
-        //  Since_midnight is not utc+8 count,so add 8 hour to make time zone match. 
+        auto midnight = date::floor<date::days>(now_minutes);
+        //  Since_midnight is not utc+8 count,so add 8 hour to make time zone match.
         auto since_midnight = (now_minutes - midnight + 8 * one_hour).count();
         for (const auto& duration : it.value()) {
             auto begin = utils::parse(duration["begin"]).count();
             auto end   = utils::parse(duration["end"]).count();
-            //ILOG("beginTime:{} endTime:{} begin:{},end:{},midNight:{}",duration["begin"].get<string>(),
-            //duration["end"].get<string>(),begin, end, since_midnight);
+            // ILOG("beginTime:{} endTime:{} begin:{},end:{},midNight:{}",duration["begin"].get<string>(),
+            // duration["end"].get<string>(),begin, end, since_midnight);
             if (begin < since_midnight && since_midnight <= end) {
                 need_record = true;
                 break;
@@ -399,7 +402,7 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
     strftime(timeBuffer, sizeof(timeBuffer), "%H:%M:%S", &local_tm);
     data.action_day  = string(dateBuffer);
     data.action_time = string(timeBuffer);
-    
+
     if (need_record) {
         data.last_record_time = data.last_record_time + 8 * one_hour;  // utc+8 for mongoDb
         mongo_store_.getBuffer().push(data);

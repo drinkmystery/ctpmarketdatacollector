@@ -30,7 +30,7 @@ include_directories(third/include)
 
 link_directories(${LIBMONGOCXX_LIBRARY_DIRS})
 link_directories(${LIBBSONCXX_LIBRARY_DIRS})
-link_directories(third/prebuilt/ctp/Win64)
+link_directories(third/prebuilt/Win64)
 
 set(NLOHMANN_JSON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third/include/json)
 message(${NLOHMANN_JSON_DIR})

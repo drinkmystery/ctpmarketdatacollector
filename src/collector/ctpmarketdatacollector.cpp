@@ -252,9 +252,8 @@ int32 CtpMarketDataCollector::start() {
     //    ELOG("Instrument: {}", iter);
     //}
 
-    //ctp_md_data_.subscribeMarketData(instrument_ids_);
+    // ctp_md_data_.subscribeMarketData(instrument_ids_);
     ctp_md_data_.subscribeMarketData();
-
 
     return 0;
 }
@@ -283,7 +282,7 @@ int32 CtpMarketDataCollector::reConnect() {
             ELOG("MarketData reconnect failed! Result:{}", result);
             return -1;
         }
-        ctp_md_data_.subscribeMarketData(instrument_ids_);
+        ctp_md_data_.subscribeMarketData();
 
         ILOG("MarketData reconnect success!");
     } catch (std::exception& e) {
@@ -304,10 +303,10 @@ void CtpMarketDataCollector::loop() {
     while (is_running_.load(std::memory_order_relaxed)) {
         process();
         using namespace std::chrono_literals;
-        std::this_thread::sleep_for(250ms);  //
+        std::this_thread::sleep_for(100ms);  //
     }
 }
-
+// 改为记录tick，未测试 -- jinntao 
 void CtpMarketDataCollector::process() {
     while (!ctp_md_data_.empty()) {
         DLOG("Collector process one tick data");
@@ -315,39 +314,48 @@ void CtpMarketDataCollector::process() {
         if (!ctp_md_data_.getData(tick_data)) {
             continue;
         }
-        // old market data ->it ,new marketdata -> tick_data;
-        // data_records_'s equal to subscribe inst size.
-        auto it = data_records_.find(tick_data.instrument_id);
-        if (it != data_records_.end()) {
-            auto new_tick_mintues  = date::floor<std::chrono::minutes>(tick_data.last_tick_time);
-            auto last_tick_minutes = date::floor<std::chrono::minutes>(it->second.last_tick_time);
+        TIME_MODE Mode = TIME_MODE::MIN_1;
 
-            if (new_tick_mintues != last_tick_minutes) {
-                // Try record one mintue data into Mongo.
-                // it->second.marketVol = tick_data.volume - it->second.volume;
-                // it->second.volume   = tick_data.volume;
-                tryRecord(it->second);
+        if (Mode == TIME_MODE::TICK) {
+            tryRecord(tick_data);
+        } else if (Mode == TIME_MODE::MIN_1) {
+            // old market data ->it ,new marketdata -> tick_data;
+            // data_records_'s equal to subscribe inst size.
+            auto it = data_records_.find(tick_data.instrument_id);
+            if (it != data_records_.end()) {
+                auto new_tick_mintues  = date::floor<std::chrono::minutes>(tick_data.last_tick_time);
+                auto last_tick_minutes = date::floor<std::chrono::minutes>(it->second.last_tick_time);
+
+                if (new_tick_mintues != last_tick_minutes) {
+                    // Try record one mintue data into Mongo.
+                    // it->second.marketVol = tick_data.volume - it->second.volume;
+                    // it->second.volume   = tick_data.volume;
+                    tryRecord(it->second);
+                } else {
+
+                    tick_data.marketVol = tick_data.volume - it->second.volume + it->second.marketVol;
+                    // Memory updtae the highest and lowest inside one mintue.
+                    tick_data.high = std::max(it->second.high, tick_data.high);
+                    tick_data.low  = std::min(it->second.low, tick_data.low);
+                    // Memory update open and volume inside one mintue.
+                    tick_data.open = it->second.open;
+                    // tick_data.volume = it->second.volume;
+                }
+                tick_data.last_record_time = it->second.last_record_time;
+                tick_data.destination_id   = it->second.destination_id;
+
+                it->second = tick_data;
+                DLOG("Collector exist Instrument Id:{}", tick_data.instrument_id);
             } else {
-
-                tick_data.marketVol = tick_data.volume - it->second.volume + it->second.marketVol;
-                // Memory updtae the highest and lowest inside one mintue.
-                tick_data.high = std::max(it->second.high, tick_data.high);
-                tick_data.low  = std::min(it->second.low, tick_data.low);
-                // Memory update open and volume inside one mintue.
-                tick_data.open = it->second.open;
-                // tick_data.volume = it->second.volume;
+                tick_data.destination_id =
+                    instrument_config_["instruments"][tick_data.instrument_id]["destination"].get<string>();
+                data_records_.insert({tick_data.instrument_id, tick_data});
+                DLOG("Collector new Instrument Id:{}", tick_data.instrument_id);
             }
-            tick_data.last_record_time = it->second.last_record_time;
-            tick_data.destination_id   = it->second.destination_id;
-
-            it->second = tick_data;
-            DLOG("Collector exist Instrument Id:{}", tick_data.instrument_id);
         } else {
-            tick_data.destination_id =
-                instrument_config_["instruments"][tick_data.instrument_id]["destination"].get<string>();
-            data_records_.insert({tick_data.instrument_id, tick_data});
-            DLOG("Collector new Instrument Id:{}", tick_data.instrument_id);
+            // do nothing
         }
+
         DLOG("Collector process one tick data ok!");
     }
 
@@ -355,7 +363,7 @@ void CtpMarketDataCollector::process() {
         tryRecord(it.second);
     }
 }
-
+// 这个函数主要过滤非交易时间段的乱序tick行情。
 void CtpMarketDataCollector::tryRecord(MarketData& data) {
 
     auto               now_minutes           = date::floor<std::chrono::minutes>(std::chrono::system_clock::now());

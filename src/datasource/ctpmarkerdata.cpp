@@ -252,7 +252,7 @@ int32 CtpMarketData::subscribeMarketData() {
         // copy assign
         instrument_ids = inst_list;
     });
-
+    ctptdspi_.ReqQrySettlementInfoConfirm();
     auto wait_result = is_obtain_inst.wait_for(60s);
     if (wait_result != std::future_status::ready || is_obtain_inst.get() != true) {
         return -2;

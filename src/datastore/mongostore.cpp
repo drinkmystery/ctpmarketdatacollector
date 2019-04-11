@@ -53,7 +53,7 @@ MongoStore::DataBuffer& MongoStore::getBuffer() {
 void MongoStore::loop() {
     while (is_running_.load(std::memory_order_relaxed)) {
         process();
-        std::this_thread::sleep_for(5s);
+        std::this_thread::sleep_for(2s);
     }
 }
 
@@ -95,7 +95,7 @@ void MongoStore::process() {
                 builder.append(kvp("mdTradingDay", data.md_trading_day));
                 builder.append(kvp("mdUpdateTime", data.md_update_time));
                 builder.append(kvp("recordTime", bsoncxx::types::b_date(data.last_record_time)));
-                db_[data.destination_id].insert_one(builder.view());
+                db_[data.instrument_id].insert_one(builder.view());
                 ILOG("MongoDb record one data ok!Inst:{},updateTime:{}", data.instrument_id, data.md_update_time);
             }else{
                 ILOG(

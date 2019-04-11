@@ -40,11 +40,11 @@ void CtpTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField* pRspUserLogin,
         trade_day_    = string(pRspUserLogin->TradingDay);
         order_ref_++;
 
-        //this->ReqQrySettlementInfoConfirm();
+        // this->ReqQrySettlementInfoConfirm();
     }
 
-     std::lock_guard<utils::spinlock> guard(lock_);
-     if (on_login_fun_) {
+    std::lock_guard<utils::spinlock> guard(lock_);
+    if (on_login_fun_) {
         std::invoke(on_login_fun_, pRspUserLogin, pRspInfo);
     }
 }
@@ -70,12 +70,12 @@ void CtpTdSpi::OnRspQrySettlementInfoConfirm(CThostFtdcSettlementInfoConfirmFiel
              pSettlementInfoConfirm->SettlementID,
              nRequestID);
     }
-    if (bIsLast) {
+    if (bIsLast && on_qry_settlement_) {
         if (pSettlementInfoConfirm) {
             // 已经确认结算信息
-            ReqQryInstrument_all();
+            std::invoke(on_qry_settlement_, true);
         } else {
-            ReqSettlementInfoConfirm();
+            std::invoke(on_qry_settlement_, false);
         }
     }
 }
@@ -102,38 +102,13 @@ void CtpTdSpi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField* 
              pSettlementInfoConfirm->SettlementID,
              nRequestID);
     }
-    if (bIsLast) {
-        ReqQryInstrument_all();
+    if (bIsLast && on_settle_confirm_) {
+        std::invoke(on_settle_confirm_);
     }
 }
-// according ctp doc
-bool CtpTdSpi::IsFlowControl(int iResult) {
-    //      0，代表成功。
 
-    //    - 1，表示网络连接失败；
 
-    //    - 2，表示未处理请求超过许可数；
 
-    //    - 3，表示每秒发送请求数超过许可数。
-
-    return ((iResult == -2) || (iResult == -3));
-}
-
-void CtpTdSpi::ReqQryInstrument_all() {
-    std::lock_guard<utils::spinlock> guard(lock_);
-    CThostFtdcQryInstrumentField     req;
-    memset(&req, 0, sizeof(req));
-    // prevent flow control
-    while (true) {
-        int iResult = ctpTdApi_->ReqQryInstrument(&req, ++request_id_);
-        ILOG("ReqQryInstrument, result:{},requestId:{}.", iResult, request_id_);
-        if (IsFlowControl(iResult)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        } else {
-            break;
-        }
-    }
-}
 
 void CtpTdSpi::OnRspQryInstrument(CThostFtdcInstrumentField* pInstrument,
                                   CThostFtdcRspInfoField*    pRspInfo,
@@ -148,12 +123,12 @@ void CtpTdSpi::OnRspQryInstrument(CThostFtdcInstrumentField* pInstrument,
         // m_InstMeassageMap->insert(
         //    pair<string, std::shared_ptr<CThostFtdcInstrumentField>>(instField->InstrumentID, instField));
         instrument_ids_.emplace_back(instField->InstrumentID);
-        ILOG("InstrumentID:{}.", instField->InstrumentID);
+        //ILOG("InstrumentID:{}.", instField->InstrumentID);
         // std::cout >> instField->InstrumentID >> std::endl;
     }
-    if (bIsLast) {
-        ILOG("OnRspQryInstrument,bIsLast:{},nRequestID:{}.", bIsLast, nRequestID);
-        std::invoke(on_instrument_ids_,instrument_ids_);
+    if (bIsLast && on_instrument_ids_) {
+        ILOG("OnRspQryInstrument,bIsLast:{},nRequestID:{},inst:{}.", bIsLast, nRequestID, instrument_ids_.size());
+        std::invoke(on_instrument_ids_, instrument_ids_);
     }
 }
 
@@ -206,8 +181,17 @@ void CtpTdSpi::setOnErrorFun(std::function<void(CThostFtdcRspInfoField*)> fun) {
     on_error_fun_ = fun;
 }
 
-void CtpTdSpi::setOnInstrumentIds(std::function<void(std::vector<std::string> )> fun) 
-{
+void CtpTdSpi::setOnInstrumentIds(std::function<void(std::vector<std::string>)> fun) {
     std::lock_guard<utils::spinlock> guard(lock_);
     on_instrument_ids_ = fun;
+}
+
+void CtpTdSpi::setOnQrySettlement(std::function<void(bool)> fun) 
+{
+    std::lock_guard<utils::spinlock> guard(lock_);
+    on_qry_settlement_ = fun;
+}
+void CtpTdSpi::setOnSettlementConfirm(std::function<void()> fun){
+    std::lock_guard<utils::spinlock> guard(lock_);
+    on_settle_confirm_ = fun;
 }

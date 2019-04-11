@@ -114,17 +114,17 @@ void CtpMdSpi::OnRspSubMarketData(CThostFtdcSpecificInstrumentField* pSpecificIn
                                   int32                              nRequestID,
                                   bool                               bIsLast) {
     if (pRspInfo && pRspInfo->ErrorID != 0) {
-        ELOG("Ctp SubMarketData failed! RequestID:{},IsLast:{},ErrorID:{},ErrorMsg:{}",
-             nRequestID,
-             bIsLast,
-             pRspInfo->ErrorID,
-             pRspInfo->ErrorMsg);
+        //ELOG("Ctp SubMarketData failed! RequestID:{},IsLast:{},ErrorID:{},ErrorMsg:{}",
+        //     nRequestID,
+        //     bIsLast,
+        //     pRspInfo->ErrorID,
+        //     pRspInfo->ErrorMsg);
     } else if (pSpecificInstrument) {
-        ILOG("Ctp SubMarketData success! RequestID:{},IsLast:{},InstrumentID:{},ErrodId:{}",
-             nRequestID,
-             bIsLast,
-             pSpecificInstrument->InstrumentID,
-             pRspInfo->ErrorID);
+        //ILOG("Ctp SubMarketData success! RequestID:{},IsLast:{},InstrumentID:{},ErrodId:{}",
+        //     nRequestID,
+        //     bIsLast,
+        //     pSpecificInstrument->InstrumentID,
+        //     pRspInfo->ErrorID);
     }
     std::lock_guard<utils::spinlock> guard(lock_);
     if (on_sub_fun_) {

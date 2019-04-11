@@ -23,6 +23,7 @@ extern "C" void signal_handler(int signal) {
 
 int32 main(int32 argc, char** argv) {
     is_running = 1;
+    //std::cout << *argv << *(argv + 1) << *(argv + 2) << argc << std::endl;
     std::signal(SIGTERM, signal_handler);
     std::signal(SIGINT, signal_handler);
 

@@ -25,6 +25,7 @@ public:
     bool  empty();
     int32 stop();
     int32 reConnect(const CtpConfig& ctp_config);
+    bool  IsFlowControl(int iResult);
 
 private:
     using DataBuffer  = boost::lockfree::spsc_queue<MarketData>;
@@ -43,6 +44,8 @@ private:
     CtpTdApiPtr ctptdapi_;
     // 
     std::vector<string> instrument_id_;
+
+    CtpConfig ctp_config_;
 
     DISALLOW_COPY_AND_ASSIGN(CtpMarketData);
 };

@@ -2,6 +2,7 @@
 
 #include <future>
 #include <chrono>
+#include <iostream>
 
 #include <boost/algorithm/string.hpp>
 
@@ -111,6 +112,7 @@ int32 CtpMarketData::init_md(const CtpConfig& ctp_config) {
             WLOG("Ctp disconnet, try reconnect!");
             global::need_reconnect.store(true, std::memory_order_release);
         });
+        this->ctp_config_ = ctp_config;
     }
 
     is_inited_ = true;
@@ -134,6 +136,7 @@ int32 CtpMarketData::init_td(const CtpConfig& ctp_config) {
                          ELOG("Release tradeApi.");
                      }};
         ctptdapi_->RegisterSpi(&ctptdspi_);
+
         ILOG("Td create instance success!");
     }
 
@@ -183,9 +186,54 @@ int32 CtpMarketData::init_td(const CtpConfig& ctp_config) {
         auto wait_result = is_logined.wait_for(5s);
         if (wait_result != std::future_status::ready || is_logined.get() != true) {
             ELOG("Td request login TimeOut!");
-            return -3;
+            return -4;
         }
         ILOG("Td login success");
+    }
+    // 3.Settlment info
+    {
+        std::promise<bool> qry_settle_result;
+        std::future<bool>  is_finish_qry = qry_settle_result.get_future();
+        bool               is_confirm;
+        ctptdspi_.setOnQrySettlement([&is_confirm, &qry_settle_result](bool confirm) {
+            ILOG("settlement result {} ", confirm);
+            is_confirm = confirm;
+            qry_settle_result.set_value(true);
+
+        });
+
+        CThostFtdcQrySettlementInfoConfirmField req;
+        memset(&req, 0, sizeof(req));
+        strcpy_s(req.BrokerID, sizeof(TThostFtdcBrokerIDType), ctp_config_.broker_id.c_str());
+        strcpy_s(req.InvestorID, sizeof(TThostFtdcInvestorIDType), ctp_config_.user_id.c_str());
+
+        int iResult = ctptdapi_->ReqQrySettlementInfoConfirm(&req, ++request_id_);
+        ILOG("First ReqQrySettlementInfoConfirm,Result:{}.request_id:{}.", iResult, request_id_);
+
+        auto wait_result = is_finish_qry.wait_for(5s);
+        if (wait_result != std::future_status::ready || is_finish_qry.get() != true) {
+            ILOG("ReqQrySettlementInfoConfirm time out.");
+            return -5;
+        }
+
+        if (!is_confirm) {
+            std::promise<bool> settlement_confirm;
+            std::future<bool>  is_settlement_confirm = settlement_confirm.get_future();
+            ctptdspi_.setOnSettlementConfirm([&settlement_confirm]() { settlement_confirm.set_value(true); });
+
+            CThostFtdcSettlementInfoConfirmField req;
+            memset(&req, 0, sizeof(req));
+            strcpy_s(req.BrokerID, sizeof(TThostFtdcBrokerIDType), ctp_config_.broker_id.c_str());
+            strcpy_s(req.InvestorID, sizeof(TThostFtdcInvestorIDType), ctp_config_.user_id.c_str());
+            int iResult = ctptdapi_->ReqSettlementInfoConfirm(&req, ++request_id_);
+            ILOG("First ReqSettlementInforConrim,Result:{}.request_id:{}.", iResult, request_id_);
+            wait_result = is_settlement_confirm.wait_for(20s);
+            if (wait_result != std::future_status::ready || is_settlement_confirm.get() != true) {
+                ILOG("ReqQrySettlementInfoConfirm time out.");
+                return -6;
+            }
+            ILOG("Settlement Confim");
+        }
     }
 
     // 4.set callback
@@ -197,6 +245,7 @@ int32 CtpMarketData::init_td(const CtpConfig& ctp_config) {
             ELOG("Td disconnect,try reconnect! reason:{}", reason);
             global::need_reconnect.store(true, std::memory_order_release);
         });
+        this->ctp_config_ = ctp_config;
     }
     return 0;
 }
@@ -234,7 +283,7 @@ int32 CtpMarketData::subscribeMarketData(const std::vector<string>& instrument_i
     // auto result =
     //    ctpmdapi_->SubscribeMarketData(nullptr,0);
 
-    ELOG("subScribe MarketData  result:{},size:{}", result, static_cast<int32>(char_instrument_ids.size()));
+    ILOG("subScribe MarketData  result:{},size:{}", result, static_cast<int32>(char_instrument_ids.size()));
     return result;
 }
 int32 CtpMarketData::subscribeMarketData() {
@@ -252,17 +301,34 @@ int32 CtpMarketData::subscribeMarketData() {
         // copy assign
         instrument_ids = inst_list;
     });
-    ctptdspi_.ReqQrySettlementInfoConfirm();
+
+    // ctptdspi_.ReqQrySettlementInfoConfirm();
+
+    CThostFtdcQryInstrumentField req;
+    memset(&req, 0, sizeof(req));
+    // prevent flow control
+    while (true) {
+        int iResult = ctptdapi_->ReqQryInstrument(&req, ++request_id_);
+        ILOG("ReqQryInstrument, result:{},requestId:{}.", iResult, request_id_);
+        if (IsFlowControl(iResult)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        } else {
+            break;
+        }
+    }
     auto wait_result = is_obtain_inst.wait_for(60s);
     if (wait_result != std::future_status::ready || is_obtain_inst.get() != true) {
         return -2;
     }
     ILOG("Obtain Inst list success");
-
+    using namespace std;
+    for (auto i = instrument_ids.begin(); i != instrument_ids.end(); i++) {
+        std::cout << *i << " ";
+    }
     this->subscribeMarketData(instrument_ids);
     return 0;
 }
-bool  CtpMarketData::getData(MarketData& data) {
+bool CtpMarketData::getData(MarketData& data) {
     if (!is_inited_) {
         ELOG("CtpMarketData is not inited");
         return false;
@@ -315,4 +381,17 @@ int32 CtpMarketData::reConnect(const CtpConfig& ctp_config) {
     }
 
     return 0;
+}
+
+// according ctp doc
+bool CtpMarketData::IsFlowControl(int iResult) {
+    //      0，代表成功。
+
+    //    - 1，表示网络连接失败；
+
+    //    - 2，表示未处理请求超过许可数；
+
+    //    - 3，表示每秒发送请求数超过许可数。
+
+    return ((iResult == -2) || (iResult == -3));
 }

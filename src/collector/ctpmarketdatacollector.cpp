@@ -64,6 +64,7 @@ int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
         ("ctp.userID", po::value<string>()->required())
         ("ctp.password", po::value<string>()->required())
         ("ctp.mdAddress", po::value<string>()->required())
+        ("ctp.tdAddress", po::value<string>()->required())
         ("ctp.mdPath", po::value<string>()->required())
         ("ctp.tdPath", po::value<string>()->required())
         ("mongo.address", po::value<string>()->required())
@@ -93,8 +94,9 @@ int32 CtpMarketDataCollector::loadConfig(int32 argc, char** argv) {
         ctp_config_.user_id      = app_options["ctp.userID"].as<string>();
         ctp_config_.password     = app_options["ctp.password"].as<string>();
         ctp_config_.md_address   = app_options["ctp.mdAddress"].as<string>();
-        ctp_config_.md_flow_path = app_options["ctp.mdPath "].as<string>();
-        ctp_config_.td_flow_path = app_options["ctp.tdPath "].as<string>();
+        ctp_config_.td_address   = app_options["ctp.tdAddress"].as<string>();
+        ctp_config_.md_flow_path = app_options["ctp.mdPath"].as<string>();
+        ctp_config_.td_flow_path = app_options["ctp.tdPath"].as<string>();
         mongo_config_.address    = app_options["mongo.address"].as<string>();
         mongo_config_.db         = app_options["mongo.db"].as<string>();
     } catch (std::exception& e) {
@@ -314,7 +316,7 @@ void CtpMarketDataCollector::process() {
         if (!ctp_md_data_.getData(tick_data)) {
             continue;
         }
-        TIME_MODE Mode = TIME_MODE::MIN_1;
+        TIME_MODE Mode = TIME_MODE::TICK;
 
         if (Mode == TIME_MODE::TICK) {
             tryRecord(tick_data);
@@ -347,8 +349,7 @@ void CtpMarketDataCollector::process() {
                 it->second = tick_data;
                 DLOG("Collector exist Instrument Id:{}", tick_data.instrument_id);
             } else {
-                tick_data.destination_id =
-                    instrument_config_["instruments"][tick_data.instrument_id]["destination"].get<string>();
+                tick_data.destination_id = instrument_config_["instruments"][tick_data.instrument_id]["destination"].get<string>();
                 data_records_.insert({tick_data.instrument_id, tick_data});
                 DLOG("Collector new Instrument Id:{}", tick_data.instrument_id);
             }
@@ -373,6 +374,8 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
     auto               last_record_minutes_t = std::chrono::system_clock::to_time_t(last_record_minutes);
     auto               last_record_minutes_s = ctime(&last_record_minutes_t);
     std::chrono::hours one_hour(1);
+    mongo_store_.getBuffer().push(data);
+    return;
     if (last_record_minutes == now_minutes) {
         return;
     }
@@ -388,7 +391,7 @@ void CtpMarketDataCollector::tryRecord(MarketData& data) {
         auto midnight = date::floor<date::days>(now_minutes);
         //  Since_midnight is not utc+8 count,so add 8 hour to make time zone match.
         auto since_midnight = (now_minutes - midnight + 8 * one_hour).count();
-        for (const auto& duration : it.value()) {
+        for (const auto& duration : it.value())  {
             auto begin = utils::parse(duration["begin"]).count();
             auto end   = utils::parse(duration["end"]).count();
             // ILOG("beginTime:{} endTime:{} begin:{},end:{},midNight:{}",duration["begin"].get<string>(),

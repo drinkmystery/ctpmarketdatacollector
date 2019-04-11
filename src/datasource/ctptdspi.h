@@ -62,9 +62,11 @@ public:
     void setOnLoginFun(std::function<void(CThostFtdcRspUserLoginField*, CThostFtdcRspInfoField*)> fun);
     void setOnErrorFun(std::function<void(CThostFtdcRspInfoField*)> fun);
     void setOnInstrumentIds(std::function<void(std::vector<std::string>)>);
-    void ReqQryInstrument_all();
+    void setOnQrySettlement(std::function<void(bool)>);
+    void setOnSettlementConfirm(std::function<void()>);
+
     
-    bool IsFlowControl(int iResult);
+    
 
 private:
     utils::spinlock lock_;
@@ -77,6 +79,8 @@ private:
     std::function<void(int32)>                                                 on_disconnected_fun_;
     std::function<void(CThostFtdcRspInfoField*)>                               on_error_fun_;
     std::function<void()>                                                      on_started_fun_;
+    std::function<void(bool)>                                                  on_qry_settlement_;
+    std::function<void()>                                                      on_settle_confirm_;
     std::function<void(std::vector<std::string>)>                              on_instrument_ids_;
 
     int32                                                                      front_id_;
